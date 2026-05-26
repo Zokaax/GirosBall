@@ -223,20 +223,24 @@ function generateLevel(levelNum: number, screenW: number, screenH: number, seedO
   const zones: Zone[] = [];
   for (let i = 0; i < numZones; i++) {
     const zt = zoneTypes[Math.floor(rng() * zoneTypes.length)];
-    const zW = 60 + rng() * 100;
-    const zH = 60 + rng() * 100;
+    const zW = 60 + rng() * 80;
+    const zH = 60 + rng() * 80;
     let tries = 0;
     let zx: number, zy: number;
+    let placed = false;
     do {
       zx = MARGIN + rng() * (screenW - MARGIN - zW);
       zy = TOP_OFFSET + rng() * (playH - zH);
       tries++;
-    } while (
-      tries < 20 && (
-        isInSafeZone(zx, zy, zW, zH, cx, cy) ||
-        allPlaced.some((p) => rectsOverlap(zx, zy, zW, zH, p.x, p.y, p.w, p.h))
-      )
-    );
+      if (
+        !isInSafeZone(zx, zy, zW, zH, cx, cy) &&
+        !allPlaced.some((p) => rectsOverlap(zx - 5, zy - 5, zW + 10, zH + 10, p.x, p.y, p.w, p.h))
+      ) {
+        placed = true;
+        break;
+      }
+    } while (tries < 50);
+    if (!placed) continue;
     const angle = rng() * Math.PI * 2;
     zones.push({ x: zx, y: zy, width: zW, height: zH, type: zt, dx: Math.cos(angle), dy: Math.sin(angle) });
   }
