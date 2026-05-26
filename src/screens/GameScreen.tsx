@@ -49,6 +49,12 @@ export default function GameScreen({ navigation, route }: Props) {
     feather: { wind: 1.5, magnetic: 0.0, ice: 0.8, mud: 0.3 },
   };
 
+  const MATERIAL_PHYSICS: Record<BallMaterial, { accel: number; friction: number }> = {
+    metal:   { accel: 0.6,  friction: 0.985 },
+    plastic: { accel: 1.0,  friction: 0.97  },
+    feather: { accel: 1.5,  friction: 0.95  },
+  };
+
   const ZONE_COLORS: Record<string, string> = {
     wind: 'rgba(100,180,255,0.35)',
     magnetic: 'rgba(200,100,255,0.35)',
@@ -179,11 +185,14 @@ export default function GameScreen({ navigation, route }: Props) {
       const rad = BALL_RADIUS * sizeRef.current;
       const sz = rad * 2;
 
-      vel.current.x -= ax * SPEED_X * 0.016;
-      vel.current.y += ay * SPEED_Y * 0.016;
+      const mat = ballMaterialRef.current;
+      const phys = MATERIAL_PHYSICS[mat];
 
-      vel.current.x *= FRICTION;
-      vel.current.y *= FRICTION;
+      vel.current.x -= ax * SPEED_X * 0.016 * phys.accel;
+      vel.current.y += ay * SPEED_Y * 0.016 * phys.accel;
+
+      vel.current.x *= phys.friction;
+      vel.current.y *= phys.friction;
 
       let newX = pos.current.x + vel.current.x * 0.016;
       let newY = pos.current.y + vel.current.y * 0.016;
@@ -207,7 +216,6 @@ export default function GameScreen({ navigation, route }: Props) {
       const bx = newX + rad;
       const by = newY + rad;
 
-      const mat = ballMaterialRef.current;
       const mult = MATERIAL_MULT[mat];
       const lvl = getLevel(levelRef.current, screenWidth, screenHeight);
       let foundZone: string | null = null;
