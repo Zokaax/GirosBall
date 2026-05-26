@@ -302,6 +302,8 @@ export default function GameScreen({ navigation, route }: Props) {
         if (circleCircleCollision(bx, by, rad, pu.x, pu.y, pu.radius)) {
           puCollectedCopy[i] = true;
           applyPowerUp(pu.type);
+          newX = pos.current.x;
+          newY = pos.current.y;
         }
       }
 
@@ -364,12 +366,14 @@ export default function GameScreen({ navigation, route }: Props) {
       pos.current.y += oldR - newR;
       sizeRef.current = mult;
       setSizeMultiplier(mult);
+      setBallPos({ x: pos.current.x, y: pos.current.y });
       const resetSize = () => {
         const oldR2 = BALL_RADIUS * sizeRef.current;
         pos.current.x += oldR2 - BALL_RADIUS;
         pos.current.y += oldR2 - BALL_RADIUS;
         sizeRef.current = 1;
         setSizeMultiplier(1);
+        setBallPos({ x: pos.current.x, y: pos.current.y });
       };
       sizeTimer.current = setTimeout(resetSize, POWERUP_DURATION);
     } else {
