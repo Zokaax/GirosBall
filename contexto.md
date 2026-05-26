@@ -1,5 +1,7 @@
 # PLAN DE DESARROLLO PROGRESIVO: "Giros Ball" (Expo / React Native)
 
+> **Nota:** Consulta [`adicionales.md`](./adicionales.md) para ver todas las funcionalidades y cambios implementados que extienden o modifican este plan original.
+
 ## INSTRUCCIONES GENERALES PARA LA IA:
 Actúa como un desarrollador experto en React Native, Expo y desarrollo de videojuegos móviles de rendimiento optimizado. 
 Vamos a construir un juego llamado "Giros Ball" paso a paso. Se jugará inclinando el teléfono (pantalla hacia arriba), usando el acelerómetro.

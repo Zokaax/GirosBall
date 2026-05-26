@@ -1,0 +1,108 @@
+# Adicionales y Cambios respecto al Plan Original
+
+Este documento registra todas las funcionalidades, decisiones técnicas y cambios implementados que no estaban contemplados en el plan original (`contexto.md`).
+
+---
+
+## 1. Infraestructura
+
+### Gestión de estado del juego
+- **Refs + useState en lugar de Context**: El estado del juego (vidas, score, nivel) se maneja con `useRef` para mutaciones en el game loop (evita re-renders) y `useState` para reflejar cambios en la UI. No se usa React Context como sugería el plan.
+
+### Navegación
+- **React Navigation Native Stack** en lugar de Expo Router: Se eligió `@react-navigation/native-stack` por su simplicidad y rendimiento frente a la alternativa de Expo Router.
+
+### Arquitectura de archivos
+- **Colisión en utilidad separada**: `src/utils/collision.ts` con funciones `circleRectCollision` y `circleCircleCollision`.
+- **Progreso persistente**: `src/data/progress.ts` para manejar niveles desbloqueados.
+- **Navegación tipada**: `src/types/navigation.ts` con `RootStackParamList`.
+
+---
+
+## 2. Física de la Bola (Etapa 2 — ampliado)
+
+### Constantes separadas por eje
+- `SPEED_X` y `SPEED_Y` independientes (1400 y 1200) para compensar diferencias de sensibilidad del acelerómetro entre ejes.
+
+### Ajustes de inercia
+- `FRICTION = 0.97`: fricción alta para que la bola conserve velocidad y se deslice con inercia real, en lugar del comportamiento más "pegajoso" de una fricción baja.
+
+### Corrección de ejes por hardware
+- El mapeo de acelerómetro se ajustó para el dispositivo del usuario: eje X invertido (`-= ax`) para que la bola vaya hacia donde se inclina el teléfono.
+- Eje Y con suma directa (`+= ay`).
+- Se invirtió el orden de las pruebas debido a diferencias en la orientación natural del acelerómetro entre dispositivos.
+
+---
+
+## 3. HUD y Límites (Etapa 3 — ampliado)
+
+### HUD como límite superior del mapa
+- Se agregó `HUD_HEIGHT = 90`. La bola no puede atravesar el área del HUD, actuando como borde superior del área de juego (no estaba especificado en el plan).
+
+### Pantalla de Victoria
+- Se agregó pantalla "¡GANASTE!" al completar los 20 niveles (no contemplada originalmente).
+
+---
+
+## 4. Generación de Niveles (Etapa 4 — significativamente ampliado)
+
+### Generación procedural vs manual
+- El plan original pedía "un array de objetos o un archivo JSON externo" para los 20 niveles. Se implementó **generación procedural** con semilla determinista (`seededRandom`), que genera cada nivel según:
+  - Número de nivel (dificultad progresiva)
+  - Dimensiones de la pantalla del dispositivo
+  - Cacheo por clave `nivel-ancho-alto` para evitar regeneraciones.
+
+### Verificación de alcanzabilidad (BFS)
+- **No especificado en el plan**: Se implementó un algoritmo de **flood fill (BFS)** sobre una grilla de 15px que verifica que todos los coleccionables sean alcanzables desde el punto de spawn.
+- Si algún coleccionable queda inaccesible (rodeado por obstáculos), el nivel se regenera con una semilla distinta (hasta 10 intentos).
+
+### Zona segura de spawn
+- Se definió `SPAWN_SAFE_RADIUS = 60px` alrededor del centro de la pantalla donde no se colocan obstáculos, evitando muertes instantáneas al cargar un nivel.
+
+### Evitar superposición de coleccionables
+- Los coleccionables se colocan verificando que no se superpongan con:
+  - Obstáculos estáticos
+  - Obstáculos móviles (posición base)
+  - Otros coleccionables (con padding de 8px entre sí)
+
+### Velocidad de obstáculos móviles
+- El multiplicador de velocidad se ajustó de 0.5 a 1.0 (duplicado) para mayor dificultad, a solicitud del usuario.
+
+---
+
+## 5. Selector de Niveles (post-Etapa 5, no contemplado)
+
+### Pantalla `LevelSelectScreen`
+- Nueva pantalla con grilla de 4 columnas mostrando niveles 1-20.
+- Los niveles bloqueados se muestran con 🔒 y no son seleccionables.
+- Los niveles desbloqueados se muestran con su número y permiten navegar directamente al juego con ese nivel inicial.
+
+### Persistencia de progreso (`src/data/progress.ts`)
+- Se guarda el nivel máximo desbloqueado usando `@react-native-async-storage/async-storage`.
+- Al completar un nivel, se desbloquea automáticamente el siguiente.
+- Se usa `useFocusEffect` en `LevelSelectScreen` para refrescar el estado al volver del juego.
+
+### Botón en menú principal
+- Se agregó "Seleccionar Nivel" entre "Jugar" y "High Scores".
+
+### Parámetro `startLevel` en navegación
+- La pantalla `Game` acepta `route.params.startLevel` opcional para iniciar desde cualquier nivel desbloqueado.
+
+---
+
+## 6. Control de Versiones
+
+### Git
+- Repositorio subido a `https://github.com/Zokaax/GirosBall.git`.
+
+---
+
+## 7. Decisiones Técnicas
+
+| Decisión | Opción | Motivo |
+|----------|--------|--------|
+| Navegación | React Navigation Native Stack | Más simple y estable que Expo Router para este caso |
+| Estado juego | useRef + useState | Evita re-renders en game loop de 60fps |
+| Generación niveles | Procedural con seed | 20 niveles sin archivos JSON externos, adaptativo a pantalla |
+| Persistencia | AsyncStorage | Única opción viable en Expo managed para almacenamiento local |
+| SDK | Expo 54 | Compatibilidad con Expo Go del dispositivo del usuario |
