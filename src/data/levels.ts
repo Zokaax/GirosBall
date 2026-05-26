@@ -231,7 +231,12 @@ function generateLevel(levelNum: number, screenW: number, screenH: number, seedO
       zx = MARGIN + rng() * (screenW - MARGIN - zW);
       zy = TOP_OFFSET + rng() * (playH - zH);
       tries++;
-    } while (isInSafeZone(zx, zy, zW, zH, cx, cy) && tries < 15);
+    } while (
+      tries < 20 && (
+        isInSafeZone(zx, zy, zW, zH, cx, cy) ||
+        allPlaced.some((p) => rectsOverlap(zx, zy, zW, zH, p.x, p.y, p.w, p.h))
+      )
+    );
     const angle = rng() * Math.PI * 2;
     zones.push({ x: zx, y: zy, width: zW, height: zH, type: zt, dx: Math.cos(angle), dy: Math.sin(angle) });
   }

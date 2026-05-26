@@ -398,13 +398,6 @@ export default function GameScreen({ navigation, route }: Props) {
         </Text>
       </View>
 
-      {levelData.zones.map((z, i) => (
-        <View
-          key={`zone-${i}`}
-          style={[styles.zone, { left: z.x, top: z.y, width: z.width, height: z.height, backgroundColor: ZONE_COLORS[z.type] }]}
-        />
-      ))}
-
       {levelData.obstacles.map((obs, i) => (
         <View
           key={`obs-${i}`}
@@ -424,6 +417,13 @@ export default function GameScreen({ navigation, route }: Props) {
         );
       })}
 
+      {levelData.zones.map((z, i) => (
+        <View
+          key={`zone-${i}`}
+          style={[styles.zone, { left: z.x, top: z.y, width: z.width, height: z.height, backgroundColor: ZONE_COLORS[z.type] }]}
+        />
+      ))}
+
       {levelData.collectibles.map((c, i) => {
         if (collected[i]) return null;
         return (
@@ -436,19 +436,99 @@ export default function GameScreen({ navigation, route }: Props) {
 
       {levelData.powerUps.map((pu, i) => {
         if (collectedPowerUps[i]) return null;
-        const color = pu.type === 'shield' ? '#4fc3f7' : pu.type === 'big' ? '#81c784' : '#ffb74d';
+        const r = pu.radius;
+        const isShield = pu.type === 'shield';
+        const isMetal = pu.type === 'metal';
+        const isPlastic = pu.type === 'plastic';
+        const isFeather = pu.type === 'feather';
+        const isBig = pu.type === 'big';
+        const isSmall = pu.type === 'small';
+        const color = isShield ? '#4fc3f7' : isBig ? '#81c784' : isSmall ? '#ffb74d' :
+          isMetal ? '#9e9e9e' : isPlastic ? '#80cbc4' : '#ffcc02';
+        const shape = isShield ? 'shield' : isBig ? 'big' : isSmall ? 'small' :
+          isMetal ? 'square' : isPlastic ? 'diamond' : 'triangle';
+
+        if (shape === 'diamond') {
+          return (
+            <View key={`pu-${i}`} style={{
+              position: 'absolute',
+              left: pu.x - r, top: pu.y - r,
+              width: r * 2, height: r * 2,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <View style={{
+                width: r * 1.4, height: r * 1.4,
+                backgroundColor: color,
+                transform: [{ rotate: '45deg' }],
+                borderRadius: 3,
+                borderWidth: 2, borderColor: '#ffffff',
+              }} />
+            </View>
+          );
+        }
+
+        if (shape === 'triangle') {
+          return (
+            <View key={`pu-${i}`} style={{
+              position: 'absolute',
+              left: pu.x - r, top: pu.y - r,
+              width: r * 2, height: r * 2,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <View style={{
+                width: 0, height: 0,
+                borderLeftWidth: r * 0.8,
+                borderRightWidth: r * 0.8,
+                borderBottomWidth: r * 1.6,
+                borderLeftColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: color,
+              }} />
+            </View>
+          );
+        }
+
+        if (shape === 'square') {
+          return (
+            <View key={`pu-${i}`} style={{
+              position: 'absolute',
+              left: pu.x - r, top: pu.y - r,
+              width: r * 2, height: r * 2,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <View style={{
+                width: r * 1.6, height: r * 1.6,
+                backgroundColor: color,
+                borderRadius: 3,
+                borderWidth: 2, borderColor: '#ffffff',
+              }} />
+            </View>
+          );
+        }
+
+        const innerR = shape === 'big' ? r * 0.6 : shape === 'small' ? r * 0.3 : r * 0.55;
         return (
-          <View
-            key={`pu-${i}`}
-            style={[styles.powerUp, {
-              left: pu.x - pu.radius,
-              top: pu.y - pu.radius,
-              width: pu.radius * 2,
-              height: pu.radius * 2,
-              borderRadius: pu.radius,
+          <View key={`pu-${i}`} style={{
+            position: 'absolute',
+            left: pu.x - r, top: pu.y - r,
+            width: r * 2, height: r * 2,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <View style={{
+              width: r * 2, height: r * 2,
+              borderRadius: r,
               backgroundColor: color,
-            }]}
-          />
+              borderWidth: shape === 'shield' ? 3 : 0,
+              borderColor: '#ffffff',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <View style={{
+                width: innerR * 2, height: innerR * 2,
+                borderRadius: innerR,
+                backgroundColor: 'rgba(255,255,255,0.5)',
+              }} />
+            </View>
+          </View>
         );
       })}
 
