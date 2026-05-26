@@ -358,12 +358,20 @@ export default function GameScreen({ navigation, route }: Props) {
     } else if (type === 'big' || type === 'small') {
       const mult = type === 'big' ? 1.5 : 0.5;
       if (sizeTimer.current) clearTimeout(sizeTimer.current);
+      const oldR = BALL_RADIUS * sizeRef.current;
+      const newR = BALL_RADIUS * mult;
+      pos.current.x += oldR - newR;
+      pos.current.y += oldR - newR;
       sizeRef.current = mult;
       setSizeMultiplier(mult);
-      sizeTimer.current = setTimeout(() => {
+      const resetSize = () => {
+        const oldR2 = BALL_RADIUS * sizeRef.current;
+        pos.current.x += oldR2 - BALL_RADIUS;
+        pos.current.y += oldR2 - BALL_RADIUS;
         sizeRef.current = 1;
         setSizeMultiplier(1);
-      }, POWERUP_DURATION);
+      };
+      sizeTimer.current = setTimeout(resetSize, POWERUP_DURATION);
     } else {
       ballMaterialRef.current = type as BallMaterial;
       setBallMaterial(type as BallMaterial);
