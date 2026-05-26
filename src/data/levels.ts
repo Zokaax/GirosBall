@@ -18,12 +18,24 @@ export type Collectible = {
   radius: number;
 };
 
-export type PowerUpType = 'shield' | 'big' | 'small';
+export type PowerUpType = 'shield' | 'big' | 'small' | 'metal' | 'plastic' | 'feather';
 
 export type PowerUp = {
   x: number; y: number;
   radius: number;
   type: PowerUpType;
+};
+
+export type BallMaterial = 'metal' | 'plastic' | 'feather';
+
+export type ZoneType = 'wind' | 'magnetic' | 'ice' | 'mud';
+
+export type Zone = {
+  x: number; y: number;
+  width: number; height: number;
+  type: ZoneType;
+  dx: number;
+  dy: number;
 };
 
 export type LevelData = {
@@ -32,6 +44,7 @@ export type LevelData = {
   movingObstacles: MovingObstacle[];
   collectibles: Collectible[];
   powerUps: PowerUp[];
+  zones: Zone[];
 };
 
 function seededRandom(seed: number) {
@@ -184,8 +197,8 @@ function generateLevel(levelNum: number, screenW: number, screenH: number, seedO
     allPlaced.push({ x: colX - COL_RADIUS, y: colY - COL_RADIUS, w: COL_RADIUS * 2 + COL_PAD, h: COL_RADIUS * 2 + COL_PAD });
   }
 
-  const numPowerUps = levelNum >= 3 ? (levelNum >= 8 ? (levelNum >= 14 ? 3 : 2) : 1) : 0;
-  const powerUpTypes: PowerUpType[] = ['shield', 'big', 'small'];
+  const numPowerUps = levelNum >= 3 ? (levelNum >= 8 ? (levelNum >= 14 ? 4 : 2) : 1) : 0;
+  const powerUpTypes: PowerUpType[] = ['shield', 'big', 'small', 'metal', 'plastic', 'feather'];
   const powerUps: PowerUp[] = [];
   for (let i = 0; i < numPowerUps; i++) {
     let tries = 0;
@@ -205,7 +218,25 @@ function generateLevel(levelNum: number, screenW: number, screenH: number, seedO
     allPlaced.push({ x: puX - 18, y: puY - 18, w: 36, h: 36 });
   }
 
-  return { id: levelNum, obstacles, movingObstacles, collectibles, powerUps };
+  const numZones = levelNum >= 5 ? (levelNum >= 10 ? (levelNum >= 15 ? 3 : 2) : 1) : 0;
+  const zoneTypes: ZoneType[] = ['wind', 'magnetic', 'ice', 'mud'];
+  const zones: Zone[] = [];
+  for (let i = 0; i < numZones; i++) {
+    const zt = zoneTypes[Math.floor(rng() * zoneTypes.length)];
+    const zW = 60 + rng() * 100;
+    const zH = 60 + rng() * 100;
+    let tries = 0;
+    let zx: number, zy: number;
+    do {
+      zx = MARGIN + rng() * (screenW - MARGIN - zW);
+      zy = TOP_OFFSET + rng() * (playH - zH);
+      tries++;
+    } while (isInSafeZone(zx, zy, zW, zH, cx, cy) && tries < 15);
+    const angle = rng() * Math.PI * 2;
+    zones.push({ x: zx, y: zy, width: zW, height: zH, type: zt, dx: Math.cos(angle), dy: Math.sin(angle) });
+  }
+
+  return { id: levelNum, obstacles, movingObstacles, collectibles, powerUps, zones };
 }
 
 const cachedLevels = new Map<string, LevelData>();

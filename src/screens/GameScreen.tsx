@@ -4,7 +4,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimension
 import { Accelerometer } from 'expo-sensors';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
-import { getLevel, type MovingObstacle, type PowerUpType } from '../data/levels';
+import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Zone } from '../data/levels';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
@@ -40,7 +40,22 @@ export default function GameScreen({ navigation, route }: Props) {
   const [shieldActive, setShieldActive] = useState(false);
   const [sizeMultiplier, setSizeMultiplier] = useState(1);
   const [collectedPowerUps, setCollectedPowerUps] = useState<boolean[]>([]);
+  const [ballMaterial, setBallMaterial] = useState<BallMaterial>('plastic');
 
+  const MATERIAL_MULT: Record<BallMaterial, Record<string, number>> = {
+    metal: { wind: 0.3, magnetic: 1.0, ice: 0.3, mud: 1.0 },
+    plastic: { wind: 0.6, magnetic: 0.0, ice: 0.5, mud: 0.7 },
+    feather: { wind: 1.2, magnetic: 0.0, ice: 0.8, mud: 0.4 },
+  };
+
+  const ZONE_COLORS: Record<string, string> = {
+    wind: 'rgba(100,180,255,0.25)',
+    magnetic: 'rgba(200,100,255,0.25)',
+    ice: 'rgba(180,230,255,0.25)',
+    mud: 'rgba(140,100,60,0.25)',
+  };
+
+  const ballMaterialRef = useRef<BallMaterial>('plastic');
   const shieldRef = useRef(false);
   const sizeRef = useRef(1);
   const shieldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,6 +83,11 @@ export default function GameScreen({ navigation, route }: Props) {
     setCollectedPowerUps(lvl.powerUps.map(() => false));
     setMvOffsets(lvl.movingObstacles.map(() => 0));
     collectedPowerUpsRef.current = lvl.powerUps.map(() => false);
+
+    const materials: BallMaterial[] = ['metal', 'plastic', 'feather'];
+    const randMat = materials[Math.floor(Math.random() * materials.length)];
+    ballMaterialRef.current = randMat;
+    setBallMaterial(randMat);
 
     if (shieldTimer.current) clearTimeout(shieldTimer.current);
     if (sizeTimer.current) clearTimeout(sizeTimer.current);
@@ -165,7 +185,32 @@ export default function GameScreen({ navigation, route }: Props) {
       const bx = newX + rad;
       const by = newY + rad;
 
+      const mat = ballMaterialRef.current;
+      const mult = MATERIAL_MULT[mat];
       const lvl = getLevel(levelRef.current, screenWidth, screenHeight);
+
+      for (const zone of lvl.zones) {
+        if (!circleRectCollision(bx, by, rad, zone.x, zone.y, zone.width, zone.height)) continue;
+        const factor = mult[zone.type];
+        if (zone.type === 'wind') {
+          vel.current.x += zone.dx * factor * 80 * 0.016;
+          vel.current.y += zone.dy * factor * 80 * 0.016;
+        } else if (zone.type === 'magnetic') {
+          const zcx = zone.x + zone.width / 2;
+          const zcy = zone.y + zone.height / 2;
+          const ddx = zcx - bx;
+          const ddy = zcy - by;
+          const dist = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
+          vel.current.x += (ddx / dist) * factor * 60 * 0.016;
+          vel.current.y += (ddy / dist) * factor * 60 * 0.016;
+        } else if (zone.type === 'ice') {
+          vel.current.x *= 1 + (0.02 * factor);
+          vel.current.y *= 1 + (0.02 * factor);
+        } else if (zone.type === 'mud') {
+          vel.current.x *= 1 - (0.03 * factor);
+          vel.current.y *= 1 - (0.03 * factor);
+        }
+      }
 
       let hitObstacle = false;
       for (const obs of lvl.obstacles) {
@@ -279,7 +324,7 @@ export default function GameScreen({ navigation, route }: Props) {
         shieldRef.current = false;
         setShieldActive(false);
       }, POWERUP_DURATION);
-    } else {
+    } else if (type === 'big' || type === 'small') {
       const mult = type === 'big' ? 1.5 : 0.5;
       if (sizeTimer.current) clearTimeout(sizeTimer.current);
       sizeRef.current = mult;
@@ -288,6 +333,9 @@ export default function GameScreen({ navigation, route }: Props) {
         sizeRef.current = 1;
         setSizeMultiplier(1);
       }, POWERUP_DURATION);
+    } else {
+      ballMaterialRef.current = type as BallMaterial;
+      setBallMaterial(type as BallMaterial);
     }
   }, []);
 
@@ -344,9 +392,18 @@ export default function GameScreen({ navigation, route }: Props) {
         </Text>
         <Text style={styles.hudText}>Score: {score}</Text>
         <Text style={styles.hudText}>
-          {shieldActive ? '🛡 ' : ''}{sizeMultiplier !== 1 ? (sizeMultiplier > 1 ? '⬆' : '⬇') : ''}{' Nivel: '}{level}/{TOTAL_LEVELS}
+          {ballMaterial === 'metal' ? '🔩' : ballMaterial === 'feather' ? '🪶' : '🧊'}{' '}
+          {shieldActive ? '🛡 ' : ''}{sizeMultiplier !== 1 ? (sizeMultiplier > 1 ? '⬆' : '⬇') : ''}{' '}
+          Nv:{level}
         </Text>
       </View>
+
+      {levelData.zones.map((z, i) => (
+        <View
+          key={`zone-${i}`}
+          style={[styles.zone, { left: z.x, top: z.y, width: z.width, height: z.height, backgroundColor: ZONE_COLORS[z.type] }]}
+        />
+      ))}
 
       {levelData.obstacles.map((obs, i) => (
         <View
@@ -508,6 +565,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#e07c24',
     borderRadius: 4,
+  },
+  zone: {
+    position: 'absolute',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   collectible: {
     position: 'absolute',
