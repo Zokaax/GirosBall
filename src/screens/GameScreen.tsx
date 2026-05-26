@@ -4,7 +4,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimension
 import { Accelerometer } from 'expo-sensors';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
-import { getLevel, type MovingObstacle } from '../data/levels';
+import { getLevel, type MovingObstacle, type PowerUpType } from '../data/levels';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
@@ -17,6 +17,7 @@ const FRICTION = 0.97;
 const HUD_HEIGHT = 90;
 const INITIAL_LIVES = 5;
 const TOTAL_LEVELS = 20;
+const POWERUP_DURATION = 6000;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
 
@@ -36,6 +37,17 @@ export default function GameScreen({ navigation, route }: Props) {
   const [mvOffsets, setMvOffsets] = useState<number[]>([]);
   const [showNameInput, setShowNameInput] = useState(false);
   const [playerName, setPlayerName] = useState('');
+  const [shieldActive, setShieldActive] = useState(false);
+  const [sizeMultiplier, setSizeMultiplier] = useState(1);
+  const [collectedPowerUps, setCollectedPowerUps] = useState<boolean[]>([]);
+
+  const shieldRef = useRef(false);
+  const sizeRef = useRef(1);
+  const shieldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const currentRadius = BALL_RADIUS * sizeRef.current;
+  const currentSize = currentRadius * 2;
 
   const pos = useRef({ x: centerX, y: centerY });
   const vel = useRef({ x: 0, y: 0 });
@@ -53,7 +65,16 @@ export default function GameScreen({ navigation, route }: Props) {
   const initLevel = useCallback(() => {
     const lvl = getLevel(levelRef.current, screenWidth, screenHeight);
     setCollected(lvl.collectibles.map(() => false));
+    setCollectedPowerUps(lvl.powerUps.map(() => false));
     setMvOffsets(lvl.movingObstacles.map(() => 0));
+    collectedPowerUpsRef.current = lvl.powerUps.map(() => false);
+
+    if (shieldTimer.current) clearTimeout(shieldTimer.current);
+    if (sizeTimer.current) clearTimeout(sizeTimer.current);
+    shieldRef.current = false;
+    sizeRef.current = 1;
+    setShieldActive(false);
+    setSizeMultiplier(1);
 
     pos.current = { x: centerX, y: centerY };
     vel.current = { x: 0, y: 0 };
@@ -90,6 +111,12 @@ export default function GameScreen({ navigation, route }: Props) {
 
   const die = useCallback(() => {
     if (gameOverRef.current) return;
+    if (shieldRef.current) {
+      shieldRef.current = false;
+      setShieldActive(false);
+      if (shieldTimer.current) clearTimeout(shieldTimer.current);
+      return;
+    }
     livesRef.current -= 1;
     setLives(livesRef.current);
     if (livesRef.current <= 0) {
@@ -107,6 +134,8 @@ export default function GameScreen({ navigation, route }: Props) {
       if (gameOverRef.current) return;
 
       timeRef.current += 1;
+      const rad = BALL_RADIUS * sizeRef.current;
+      const sz = rad * 2;
 
       vel.current.x -= ax * SPEED_X * 0.016;
       vel.current.y += ay * SPEED_Y * 0.016;
@@ -120,27 +149,27 @@ export default function GameScreen({ navigation, route }: Props) {
       if (newX < 0) {
         newX = 0;
         vel.current.x *= -0.5;
-      } else if (newX > screenWidth - BALL_SIZE) {
-        newX = screenWidth - BALL_SIZE;
+      } else if (newX > screenWidth - sz) {
+        newX = screenWidth - sz;
         vel.current.x *= -0.5;
       }
 
       if (newY < HUD_HEIGHT) {
         newY = HUD_HEIGHT;
         vel.current.y *= -0.5;
-      } else if (newY > screenHeight - BALL_SIZE) {
-        newY = screenHeight - BALL_SIZE;
+      } else if (newY > screenHeight - sz) {
+        newY = screenHeight - sz;
         vel.current.y *= -0.5;
       }
 
-      const bx = newX + BALL_RADIUS;
-      const by = newY + BALL_RADIUS;
+      const bx = newX + rad;
+      const by = newY + rad;
 
       const lvl = getLevel(levelRef.current, screenWidth, screenHeight);
 
       let hitObstacle = false;
       for (const obs of lvl.obstacles) {
-        if (circleRectCollision(bx, by, BALL_RADIUS, obs.x, obs.y, obs.width, obs.height)) {
+        if (circleRectCollision(bx, by, rad, obs.x, obs.y, obs.width, obs.height)) {
           hitObstacle = true;
           break;
         }
@@ -155,7 +184,7 @@ export default function GameScreen({ navigation, route }: Props) {
           if (mo.axis === 'x') mx += offset;
           else my += offset;
 
-          if (circleRectCollision(bx, by, BALL_RADIUS, mx, my, mo.width, mo.height)) {
+          if (circleRectCollision(bx, by, rad, mx, my, mo.width, mo.height)) {
             hitObstacle = true;
             break;
           }
@@ -165,19 +194,38 @@ export default function GameScreen({ navigation, route }: Props) {
       if (hitObstacle) {
         pos.current = { x: newX, y: newY };
         setBallPos({ x: newX, y: newY });
+        if (shieldRef.current) {
+          vel.current.x *= -0.5;
+          vel.current.y *= -0.5;
+          const pushX = pos.current.x + vel.current.x * 0.04;
+          const pushY = pos.current.y + vel.current.y * 0.04;
+          pos.current.x = Math.max(0, Math.min(screenWidth - rad * 2, pushX));
+          pos.current.y = Math.max(HUD_HEIGHT, Math.min(screenHeight - rad * 2, pushY));
+          setBallPos({ x: pos.current.x, y: pos.current.y });
+        }
         die();
         return;
       }
 
       const collectedCopy = [...collectedRef.current];
+      const puCollectedCopy = [...collectedPowerUpsRef.current];
       let newScore = scoreRef.current;
 
       for (let i = 0; i < lvl.collectibles.length; i++) {
         if (collectedCopy[i]) continue;
         const c = lvl.collectibles[i];
-        if (circleCircleCollision(bx, by, BALL_RADIUS, c.x, c.y, c.radius)) {
+        if (circleCircleCollision(bx, by, rad, c.x, c.y, c.radius)) {
           collectedCopy[i] = true;
           newScore += 100;
+        }
+      }
+
+      for (let i = 0; i < lvl.powerUps.length; i++) {
+        if (puCollectedCopy[i]) continue;
+        const pu = lvl.powerUps[i];
+        if (circleCircleCollision(bx, by, rad, pu.x, pu.y, pu.radius)) {
+          puCollectedCopy[i] = true;
+          applyPowerUp(pu.type);
         }
       }
 
@@ -193,7 +241,12 @@ export default function GameScreen({ navigation, route }: Props) {
           setBallPos({ x: newX, y: newY });
           nextLevel();
           return;
-        }
+      }
+      }
+
+      if (puCollectedCopy.some((v, i) => v !== collectedPowerUpsRef.current[i])) {
+        collectedPowerUpsRef.current = puCollectedCopy;
+        setCollectedPowerUps(puCollectedCopy);
       }
 
       pos.current = { x: newX, y: newY };
@@ -212,9 +265,31 @@ export default function GameScreen({ navigation, route }: Props) {
 
   const collectedRef = useRef(collected);
   collectedRef.current = collected;
+  const collectedPowerUpsRef = useRef<boolean[]>([]);
   const mvOffsetsRef = useRef(mvOffsets);
   mvOffsetsRef.current = mvOffsets;
   const nameSubmittedRef = useRef(false);
+
+  const applyPowerUp = useCallback((type: PowerUpType) => {
+    if (type === 'shield') {
+      if (shieldTimer.current) clearTimeout(shieldTimer.current);
+      shieldRef.current = true;
+      setShieldActive(true);
+      shieldTimer.current = setTimeout(() => {
+        shieldRef.current = false;
+        setShieldActive(false);
+      }, POWERUP_DURATION);
+    } else {
+      const mult = type === 'big' ? 1.5 : 0.5;
+      if (sizeTimer.current) clearTimeout(sizeTimer.current);
+      sizeRef.current = mult;
+      setSizeMultiplier(mult);
+      sizeTimer.current = setTimeout(() => {
+        sizeRef.current = 1;
+        setSizeMultiplier(1);
+      }, POWERUP_DURATION);
+    }
+  }, []);
 
   useEffect(() => {
     if ((gameOver || gameWon) && !nameSubmittedRef.current) {
@@ -249,6 +324,12 @@ export default function GameScreen({ navigation, route }: Props) {
     nameSubmittedRef.current = false;
     setShowNameInput(false);
     setPlayerName('');
+    shieldRef.current = false;
+    sizeRef.current = 1;
+    setShieldActive(false);
+    setSizeMultiplier(1);
+    if (shieldTimer.current) clearTimeout(shieldTimer.current);
+    if (sizeTimer.current) clearTimeout(sizeTimer.current);
   };
 
   const handleVolverMenu = () => {
@@ -262,7 +343,9 @@ export default function GameScreen({ navigation, route }: Props) {
           {'♥'.repeat(Math.max(0, lives))}
         </Text>
         <Text style={styles.hudText}>Score: {score}</Text>
-        <Text style={styles.hudText}>Nivel: {level}/{TOTAL_LEVELS}</Text>
+        <Text style={styles.hudText}>
+          {shieldActive ? '🛡 ' : ''}{sizeMultiplier !== 1 ? (sizeMultiplier > 1 ? '⬆' : '⬇') : ''}{' Nivel: '}{level}/{TOTAL_LEVELS}
+        </Text>
       </View>
 
       {levelData.obstacles.map((obs, i) => (
@@ -294,7 +377,41 @@ export default function GameScreen({ navigation, route }: Props) {
         );
       })}
 
-      <View style={[styles.ball, { left: ballPos.x, top: ballPos.y }]} />
+      {levelData.powerUps.map((pu, i) => {
+        if (collectedPowerUps[i]) return null;
+        const color = pu.type === 'shield' ? '#4fc3f7' : pu.type === 'big' ? '#81c784' : '#ffb74d';
+        return (
+          <View
+            key={`pu-${i}`}
+            style={[styles.powerUp, {
+              left: pu.x - pu.radius,
+              top: pu.y - pu.radius,
+              width: pu.radius * 2,
+              height: pu.radius * 2,
+              borderRadius: pu.radius,
+              backgroundColor: color,
+            }]}
+          />
+        );
+      })}
+
+      {shieldActive && (
+        <View style={[styles.shield, {
+          left: ballPos.x - 6,
+          top: ballPos.y - 6,
+          width: currentSize + 12,
+          height: currentSize + 12,
+          borderRadius: (currentSize + 12) / 2,
+        }]} />
+      )}
+
+      <View style={[styles.ball, {
+        left: ballPos.x,
+        top: ballPos.y,
+        width: currentSize,
+        height: currentSize,
+        borderRadius: currentRadius,
+      }]} />
 
       {gameOver && (
         <View style={styles.overlay}>
@@ -395,6 +512,17 @@ const styles = StyleSheet.create({
   collectible: {
     position: 'absolute',
     backgroundColor: '#ffd700',
+  },
+  powerUp: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  shield: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderColor: '#4fc3f7',
+    opacity: 0.5,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

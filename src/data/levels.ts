@@ -18,11 +18,20 @@ export type Collectible = {
   radius: number;
 };
 
+export type PowerUpType = 'shield' | 'big' | 'small';
+
+export type PowerUp = {
+  x: number; y: number;
+  radius: number;
+  type: PowerUpType;
+};
+
 export type LevelData = {
   id: number;
   obstacles: Obstacle[];
   movingObstacles: MovingObstacle[];
   collectibles: Collectible[];
+  powerUps: PowerUp[];
 };
 
 function seededRandom(seed: number) {
@@ -175,7 +184,28 @@ function generateLevel(levelNum: number, screenW: number, screenH: number, seedO
     allPlaced.push({ x: colX - COL_RADIUS, y: colY - COL_RADIUS, w: COL_RADIUS * 2 + COL_PAD, h: COL_RADIUS * 2 + COL_PAD });
   }
 
-  return { id: levelNum, obstacles, movingObstacles, collectibles };
+  const numPowerUps = levelNum >= 3 ? (levelNum >= 8 ? (levelNum >= 14 ? 3 : 2) : 1) : 0;
+  const powerUpTypes: PowerUpType[] = ['shield', 'big', 'small'];
+  const powerUps: PowerUp[] = [];
+  for (let i = 0; i < numPowerUps; i++) {
+    let tries = 0;
+    let puX: number, puY: number;
+    do {
+      puX = MARGIN + rng() * (screenW - 2 * MARGIN);
+      puY = TOP_OFFSET + rng() * (playH - MARGIN);
+      tries++;
+    } while (
+      tries < 30 &&
+      allPlaced.some((p) =>
+        rectsOverlap(puX - 18, puY - 18, 36, 36, p.x, p.y, p.w, p.h),
+      )
+    );
+    const type = powerUpTypes[Math.floor(rng() * powerUpTypes.length)];
+    powerUps.push({ x: puX, y: puY, radius: 18, type });
+    allPlaced.push({ x: puX - 18, y: puY - 18, w: 36, h: 36 });
+  }
+
+  return { id: levelNum, obstacles, movingObstacles, collectibles, powerUps };
 }
 
 const cachedLevels = new Map<string, LevelData>();

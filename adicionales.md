@@ -106,3 +106,33 @@ Este documento registra todas las funcionalidades, decisiones técnicas y cambio
 | Generación niveles | Procedural con seed | 20 niveles sin archivos JSON externos, adaptativo a pantalla |
 | Persistencia | AsyncStorage | Única opción viable en Expo managed para almacenamiento local |
 | SDK | Expo 54 | Compatibilidad con Expo Go del dispositivo del usuario |
+
+---
+
+## 8. Power-ups
+
+### Tipos implementados
+
+| Tipo | Color | Efecto | Duración |
+|------|-------|--------|----------|
+| 🛡 Escudo | Azul #4fc3f7 | Absorbe 1 golpe (rompe el escudo en vez de perder vida) | 6s o hasta recibir golpe |
+| ⬆ Agrandar | Verde #81c784 | Bola 1.5× más grande | 6s |
+| ⬇ Encoger | Naranja #ffb74d | Bola 0.5× más pequeña | 6s |
+
+### Comportamiento del escudo
+- Al recibir un golpe con escudo activo: la bola **rebota hacia atrás** (velocidad invertida con pérdida de energía * -0.5) para evitar quedar dentro del obstáculo y recibir daño múltiple.
+- El escudo se desactiva inmediatamente al absorber el golpe. Si expira el temporizador de 6s sin recibir daño, también se desactiva.
+
+### Comportamiento de tamaño
+- `big` (1.5×): la bola ocupa más espacio, dificulta pasar entre obstáculos.
+- `small` (0.5×): la bola es más ágil, pasa por espacios estrechos.
+- Las colisiones con bordes y obstáculos usan el radio dinámico en cada frame.
+- Al expirar o cambiar de nivel, el tamaño vuelve a 1.0×.
+
+### Generación
+- Nivel 1-2: 0 power-ups
+- Nivel 3-7: 1 power-up
+- Nivel 8-13: 2 power-ups
+- Nivel 14+: 3 power-ups
+- Tipo elegido aleatoriamente entre los 3 disponibles.
+- Se colocan evitando superposición con obstáculos, móviles y coleccionables a través del sistema `allPlaced`.
