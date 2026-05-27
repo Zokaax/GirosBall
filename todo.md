@@ -27,32 +27,29 @@
 | High Scores persistente (top 10) | ✅ |
 | Selector de niveles con desbloqueo progresivo | ✅ |
 | +1 vida cada 3 niveles superados | ✅ |
-| **Sistema de pausa** | ✅ |
-| **Temporizador de nivel** | ✅ |
-| **Delay inicial al cargar nivel** | ✅ |
-| **Vibración háptica al perder vida** | ✅ |
+| Sistema de pausa | ✅ |
+| Temporizador de nivel en HUD | ✅ |
+| Delay inicial al cargar nivel | ✅ |
+| Vibración háptica al perder vida | ✅ |
+| **Power-up timer bar** | ✅ |
+| **Sistema de combo/racha** | ✅ |
+| **Bonificación por tiempo** | ✅ |
+| **Trampas: pinchos y plataformas que desaparecen** | ✅ |
 
 ---
 
 ## Mejoras priorizadas
 
 ### Prioridad alta — Jugabilidad base
-- [x] ~~**Pausa**: Botón de pausa durante la partida~~ (implementado)
-- [x] ~~**Power-up timer visual**: Indicador de tiempo restante~~ (en HUD)
-- [x] ~~**Delay inicial al cargar nivel**: Evitar muerte instantánea al cruzar entre niveles~~ (implementado)
-- [x] ~~**Vibración háptica**: Feedback táctil al perder vida~~ (implementado)
-- [ ] **Power-up timer bar**: Barra de progreso visual mostrando tiempo restante de power-ups activos
-- [ ] **Combo/racha**: Multiplicador de score por recolectar seguido
-- [ ] **Bonificación por tiempo**: Puntos extra por completar nivel rápido
+- [ ] **Power-ups restantes**: Refinar duración, rareza, balance de los actuales
+- [ ] **Materiales restantes**: Ajuste fino de físicas
 - [ ] **Tutorial interactivo**: Nivel guiado inicial explicando controles
-- [ ] **Trampas**: Nuevo tipo de obstáculo (pinchos, plataformas que desaparecen, teletransporte forzado)
+- [ ] **Dificultad dinámica**: Ajustar generación según rendimiento
 
 ### Prioridad media — Contenido y retos
 - [ ] **Jefes de nivel**: Obstáculo grande con mecánica especial cada 5 niveles
 - [ ] **Mapas personalizados**: Reemplazar generación procedural con niveles diseñados manualmente
-- [ ] **Refinar power-ups actuales**: Ajustar duración, efecto, rareza y balance
-- [ ] **Refinar materiales actuales**: Ajustar físicas de metal/plastic/feather
-- [ ] **Dificultad dinámica**: Ajustar obstáculos según rendimiento del jugador
+- [ ] **Más tipos de trampa**: Pinchos, plataformas que desaparecen, teletransporte forzado, suelo que se rompe
 
 ### Prioridad baja — Pulido visual y audio
 - [ ] **Efectos de partículas**: Al recolectar monedas, al morir, al pasar de nivel

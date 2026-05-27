@@ -38,6 +38,15 @@ export type Zone = {
   dy: number;
 };
 
+export type TrapType = 'spike' | 'disappearing';
+
+export type Trap = {
+  x: number; y: number;
+  width: number; height: number;
+  type: TrapType;
+  phase: number;
+};
+
 export type LevelData = {
   id: number;
   obstacles: Obstacle[];
@@ -45,6 +54,7 @@ export type LevelData = {
   collectibles: Collectible[];
   powerUps: PowerUp[];
   zones: Zone[];
+  traps: Trap[];
 };
 
 function seededRandom(seed: number) {
@@ -77,6 +87,7 @@ const BALL_RADIUS = 20;
 function areCollectiblesReachable(
   obstacles: Obstacle[],
   movingObstacles: MovingObstacle[],
+  traps: Trap[],
   collectibles: Collectible[],
   cx: number, cy: number,
   screenW: number, screenH: number,
@@ -99,6 +110,7 @@ function areCollectiblesReachable(
 
   for (const o of obstacles) markBlocked(o.x, o.y, o.width, o.height);
   for (const m of movingObstacles) markBlocked(m.x, m.y, m.width, m.height);
+  for (const t of traps) markBlocked(t.x, t.y, t.width, t.height);
 
   const spawnC = Math.floor(cx / CELL);
   const spawnR = Math.floor((cy - TOP_OFFSET) / CELL);
@@ -245,7 +257,31 @@ function generateLevel(levelNum: number, screenW: number, screenH: number, seedO
     zones.push({ x: zx, y: zy, width: zW, height: zH, type: zt, dx: Math.cos(angle), dy: Math.sin(angle) });
   }
 
-  return { id: levelNum, obstacles, movingObstacles, collectibles, powerUps, zones };
+  const numSpikes = levelNum >= 3 ? Math.floor((levelNum - 2) / 3) : 0;
+  const numDisappearing = levelNum >= 6 ? Math.floor(levelNum / 5) : 0;
+  const traps: Trap[] = [];
+  for (let i = 0; i < numSpikes; i++) {
+    let tries = 0;
+    let sx: number, sy: number;
+    do {
+      sx = MARGIN + rng() * (screenW - 2 * MARGIN - 30);
+      sy = TOP_OFFSET + rng() * (playH - MARGIN - 30);
+      tries++;
+    } while (isInSafeZone(sx, sy, 24, 24, cx, cy) && tries < 20);
+    traps.push({ x: sx, y: sy, width: 24, height: 24, type: 'spike', phase: rng() });
+  }
+  for (let i = 0; i < numDisappearing; i++) {
+    let tries = 0;
+    let dx: number, dy: number;
+    do {
+      dx = MARGIN + rng() * (screenW - 2 * MARGIN - 50);
+      dy = TOP_OFFSET + rng() * (playH - MARGIN - 18);
+      tries++;
+    } while (isInSafeZone(dx, dy, 50, 18, cx, cy) && tries < 20);
+    traps.push({ x: dx, y: dy, width: 50, height: 18, type: 'disappearing', phase: rng() });
+  }
+
+  return { id: levelNum, obstacles, movingObstacles, collectibles, powerUps, zones, traps };
 }
 
 const cachedLevels = new Map<string, LevelData>();
@@ -258,7 +294,7 @@ export function getLevel(levelNum: number, screenW: number, screenH: number): Le
     let data: LevelData;
     for (let attempt = 0; attempt < 10; attempt++) {
       data = generateLevel(levelNum, screenW, screenH, attempt);
-      if (areCollectiblesReachable(data.obstacles, data.movingObstacles, data.collectibles, cx, cy, screenW, screenH)) {
+      if (areCollectiblesReachable(data.obstacles, data.movingObstacles, data.traps, data.collectibles, cx, cy, screenW, screenH)) {
         break;
       }
     }

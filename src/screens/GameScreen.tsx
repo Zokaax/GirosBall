@@ -4,7 +4,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimension
 import { Accelerometer } from 'expo-sensors';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
-import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Zone } from '../data/levels';
+import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Trap, type Zone } from '../data/levels';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
@@ -45,6 +45,9 @@ export default function GameScreen({ navigation, route }: Props) {
   const [paused, setPaused] = useState(false);
   const [levelTime, setLevelTime] = useState(0);
   const [startCountdown, setStartCountdown] = useState(0);
+  const [comboCount, setComboCount] = useState(0);
+  const [comboText, setComboText] = useState('');
+  const [powerUpProgress, setPowerUpProgress] = useState({ shield: 0, size: 0 });
 
   const MATERIAL_MULT: Record<BallMaterial, Record<string, number>> = {
     metal: { wind: 0.3, magnetic: 1.5, ice: 0.3, mud: 1.2 },
@@ -98,6 +101,10 @@ export default function GameScreen({ navigation, route }: Props) {
   const pausedRef = useRef(false);
   const levelTimeRef = useRef(0);
   const startDelayRef = useRef(0);
+  const comboRef = useRef(0);
+  const lastCollectFrameRef = useRef(0);
+  const shieldStartRef = useRef(0);
+  const sizeStartRef = useRef(0);
 
   const pos = useRef({ x: centerX, y: centerY });
   const vel = useRef({ x: 0, y: 0 });
@@ -134,6 +141,11 @@ export default function GameScreen({ navigation, route }: Props) {
     pausedRef.current = false;
     setPaused(false);
 
+    comboRef.current = 0;
+    lastCollectFrameRef.current = 0;
+    setComboCount(0);
+    setComboText('');
+
     levelTimeRef.current = 0;
     setLevelTime(0);
     startDelayRef.current = 60;
@@ -156,6 +168,12 @@ export default function GameScreen({ navigation, route }: Props) {
   }, [centerX, centerY]);
 
   const nextLevel = useCallback(() => {
+    const timeBonus = Math.max(0, Math.floor((1800 - levelTimeRef.current) / 6) * 10);
+    if (timeBonus > 0) {
+      scoreRef.current += timeBonus;
+      setScore(scoreRef.current);
+    }
+
     unlockNextLevel(levelRef.current);
     if (levelRef.current >= TOTAL_LEVELS) {
       gameOverRef.current = true;
@@ -292,7 +310,21 @@ export default function GameScreen({ navigation, route }: Props) {
         }
       }
 
+      let hitTrap = false;
       if (!hitObstacle) {
+        for (const trap of lvl.traps) {
+          if (trap.type === 'disappearing') {
+            const phase = Math.sin(timeRef.current * 0.03 + trap.phase * Math.PI * 2);
+            if (phase < 0) continue;
+          }
+          if (circleRectCollision(bx, by, rad, trap.x, trap.y, trap.width, trap.height)) {
+            hitTrap = true;
+            break;
+          }
+        }
+      }
+
+      if (!hitObstacle && !hitTrap) {
         for (let i = 0; i < lvl.movingObstacles.length; i++) {
           const mo = lvl.movingObstacles[i];
           const offset = mvOffsetsRef.current[i] ?? 0;
@@ -308,10 +340,10 @@ export default function GameScreen({ navigation, route }: Props) {
         }
       }
 
-      if (hitObstacle) {
+      if (hitObstacle || hitTrap) {
         pos.current = { x: newX, y: newY };
         setBallPos({ x: newX, y: newY });
-        if (shieldRef.current) {
+        if (shieldRef.current && !hitTrap) {
           vel.current.x *= -0.5;
           vel.current.y *= -0.5;
           const pushX = pos.current.x + vel.current.x * 0.04;
@@ -333,7 +365,17 @@ export default function GameScreen({ navigation, route }: Props) {
         const c = lvl.collectibles[i];
         if (circleCircleCollision(bx, by, rad, c.x, c.y, c.radius)) {
           collectedCopy[i] = true;
-          newScore += 100;
+          const sinceLast = timeRef.current - lastCollectFrameRef.current;
+          if (sinceLast < 90 && lastCollectFrameRef.current > 0) {
+            comboRef.current = Math.min(comboRef.current + 1, 10);
+          } else {
+            comboRef.current = 1;
+          }
+          lastCollectFrameRef.current = timeRef.current;
+          const mult = comboRef.current;
+          newScore += 100 * mult;
+          setComboCount(comboRef.current);
+          if (mult >= 2) setComboText(`x${mult}`);
         }
       }
 
@@ -381,6 +423,24 @@ export default function GameScreen({ navigation, route }: Props) {
 
     return () => sub.remove();
   }, [screenWidth, screenHeight, die, nextLevel]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = performance.now();
+      setPowerUpProgress({
+        shield: shieldRef.current ? Math.max(0, 1 - (now - shieldStartRef.current) / POWERUP_DURATION) : 0,
+        size: sizeRef.current !== 1 ? Math.max(0, 1 - (now - sizeStartRef.current) / POWERUP_DURATION) : 0,
+      });
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (comboText) {
+      const t = setTimeout(() => setComboText(''), 800);
+      return () => clearTimeout(t);
+    }
+  }, [comboText]);
 
   const collectedRef = useRef(collected);
   collectedRef.current = collected;
@@ -458,6 +518,10 @@ export default function GameScreen({ navigation, route }: Props) {
     setPlayerName('');
     pausedRef.current = false;
     setPaused(false);
+    comboRef.current = 0;
+    lastCollectFrameRef.current = 0;
+    setComboCount(0);
+    setComboText('');
     shieldRef.current = false;
     sizeRef.current = 1;
     setShieldActive(false);
@@ -481,12 +545,28 @@ export default function GameScreen({ navigation, route }: Props) {
           ⏱ {String(Math.floor(levelTime / 3600)).padStart(2, '0')}:{String(Math.floor(levelTime / 60) % 60).padStart(2, '0')}
         </Text>
         <Text style={styles.hudText}>
+          {comboCount >= 2 ? `🔥x${comboCount}` : ''}{' '}
           {ballMaterial === 'metal' ? '🔩' : ballMaterial === 'feather' ? '🪶' : '🧊'}{' '}
           {shieldActive ? '🛡 ' : ''}{sizeMultiplier !== 1 ? (sizeMultiplier > 1 ? '⬆' : '⬇') : ''}{' '}
           {activeZone ? (activeZone === 'wind' ? '💨' : activeZone === 'magnetic' ? '🧲' : activeZone === 'ice' ? '❄️' : '💩') : ''}{' '}
           Nv:{level}
         </Text>
       </View>
+
+      {(powerUpProgress.shield > 0 || powerUpProgress.size > 0) && (
+        <View style={styles.powerUpBarContainer}>
+          {powerUpProgress.shield > 0 && (
+            <View style={[styles.powerUpBar, { width: `${powerUpProgress.shield * 100}%`, backgroundColor: '#4fc3f7' }]} />
+          )}
+          {powerUpProgress.size > 0 && (
+            <View style={[styles.powerUpBar, {
+              width: `${powerUpProgress.size * 100}%`,
+              backgroundColor: sizeRef.current > 1 ? '#81c784' : '#ffb74d',
+              marginTop: powerUpProgress.shield > 0 ? 3 : 0,
+            }]} />
+          )}
+        </View>
+      )}
 
       {levelData.obstacles.map((obs, i) => (
         <View
@@ -503,6 +583,22 @@ export default function GameScreen({ navigation, route }: Props) {
           <View
             key={`mov-${i}`}
             style={[styles.movingObstacle, { left: mLeft, top: mTop, width: mo.width, height: mo.height }]}
+          />
+        );
+      })}
+
+      {levelData.traps.map((trap, i) => {
+        if (trap.type === 'disappearing') {
+          const phase = Math.sin(timeRef.current * 0.03 + trap.phase * Math.PI * 2);
+          if (phase < 0) return null;
+        }
+        return (
+          <View
+            key={`trap-${i}`}
+            style={[styles.trap, trap.type === 'spike' ? styles.trapSpike : styles.trapDisappearing, {
+              left: trap.x, top: trap.y,
+              width: trap.width, height: trap.height,
+            }]}
           />
         );
       })}
@@ -626,6 +722,12 @@ export default function GameScreen({ navigation, route }: Props) {
           </View>
         );
       })}
+
+      {comboText !== '' && (
+        <View style={styles.comboPopup}>
+          <Text style={styles.comboPopupText}>{comboText}</Text>
+        </View>
+      )}
 
       {activeZone && (
         <View style={{
@@ -800,6 +902,47 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#e07c24',
     borderRadius: 4,
+  },
+  trap: {
+    position: 'absolute',
+    borderRadius: 4,
+  },
+  trapSpike: {
+    backgroundColor: '#e53935',
+    borderWidth: 2,
+    borderColor: '#ff1744',
+    transform: [{ rotate: '45deg' }],
+  },
+  trapDisappearing: {
+    backgroundColor: 'rgba(100,200,255,0.5)',
+    borderWidth: 2,
+    borderColor: 'rgba(100,200,255,0.8)',
+    borderStyle: 'dashed',
+  },
+  powerUpBarContainer: {
+    height: 6,
+    paddingHorizontal: 4,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  powerUpBar: {
+    height: 3,
+    borderRadius: 2,
+  },
+  comboPopup: {
+    position: 'absolute',
+    top: '40%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  comboPopupText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#ff6f00',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
   zone: {
     position: 'absolute',
