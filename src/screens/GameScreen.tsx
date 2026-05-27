@@ -49,6 +49,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const [debugHitboxes, setDebugHitboxes] = useState(false);
   const [comboCount, setComboCount] = useState(0);
   const [powerUpProgress, setPowerUpProgress] = useState({ shield: 0, size: 0 });
+  const [brokenWalls, setBrokenWalls] = useState<Record<number, boolean>>({});
+  const [iceBrokenState, setIceBrokenState] = useState<Record<number, 'intact' | 'cracking' | 'fallen'>>({});
 
   const MATERIAL_MULT: Record<BallMaterial, Record<string, number>> = {
     metal: { wind: 0.3, magnetic: 1.5, ice: 0.3, mud: 1.2 },
@@ -75,6 +77,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const sizeRef = useRef(1);
   const shieldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const brokenWallsRef = useRef<Record<number, boolean>>({});
+  const iceStateRef = useRef<Record<number, { state: 'intact' | 'cracking' | 'fallen'; timer: number }>>({});
 
   const currentRadius = BALL_RADIUS * sizeRef.current;
   const currentSize = currentRadius * 2;
@@ -282,16 +286,76 @@ export default function GameScreen({ navigation, route }: Props) {
         setActiveZone(foundZone);
       }
 
-      let hitObstacle = false;
-      for (const obs of lvl.obstacles) {
-        if (circleRectCollision(bx, by, rad, obs.x, obs.y, obs.width, obs.height)) {
-          hitObstacle = true;
-          break;
+      let hitTrap = false;
+      let hitLethal = false;
+      let bounced = false;
+
+      const bounceOff = (rx: number, ry: number, rw: number, rh: number) => {
+        const bx2 = bx - rad;
+        const by2 = by - rad;
+        const overlapLeft = (bx2 + rad * 2) - rx;
+        const overlapRight = (rx + rw) - bx2;
+        const overlapTop = (by2 + rad * 2) - ry;
+        const overlapBottom = (ry + rh) - by2;
+        const minOvr = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+        if (minOvr === overlapLeft || minOvr === overlapRight) {
+          pos.current.x = minOvr === overlapLeft ? rx - rad * 2 : rx + rw;
+          setBallPos({ x: pos.current.x, y: pos.current.y });
+          vel.current.x *= -0.5;
+        } else {
+          pos.current.y = minOvr === overlapTop ? ry - rad * 2 : ry + rh;
+          setBallPos({ x: pos.current.x, y: pos.current.y });
+          vel.current.y *= -0.5;
+        }
+        newX = pos.current.x;
+        newY = pos.current.y;
+      };
+
+      for (let oi = 0; oi < lvl.obstacles.length; oi++) {
+        const obs = lvl.obstacles[oi];
+        if (!circleRectCollision(bx, by, rad, obs.x, obs.y, obs.width, obs.height)) continue;
+        if (obs.type === 'wall') {
+          bounceOff(obs.x, obs.y, obs.width, obs.height);
+          bounced = true;
+        } else if (obs.type === 'rotting_floor') {
+          if (mat === 'feather') {
+          } else {
+            hitLethal = true;
+            break;
+          }
+        } else if (obs.type === 'fragile_wall') {
+          if (mat === 'metal') {
+            brokenWallsRef.current[oi] = true;
+            setBrokenWalls({ ...brokenWallsRef.current });
+          } else {
+            bounceOff(obs.x, obs.y, obs.width, obs.height);
+            bounced = true;
+          }
+        } else if (obs.type === 'thin_ice') {
+          if (mat === 'feather') {
+          } else if (mat === 'metal') {
+            iceStateRef.current[oi] = { state: 'fallen', timer: 0 };
+            setIceBrokenState((prev) => ({ ...prev, [oi]: 'fallen' }));
+            hitLethal = true;
+            break;
+          } else {
+            const cur = iceStateRef.current[oi];
+            if (!cur || cur.state === 'intact') {
+              iceStateRef.current[oi] = { state: 'cracking', timer: timeRef.current };
+              setIceBrokenState((prev) => ({ ...prev, [oi]: 'cracking' }));
+            } else if (cur.state === 'cracking') {
+              if (timeRef.current - cur.timer > 60) {
+                iceStateRef.current[oi] = { state: 'fallen', timer: 0 };
+                setIceBrokenState((prev) => ({ ...prev, [oi]: 'fallen' }));
+                hitLethal = true;
+                break;
+              }
+            }
+          }
         }
       }
 
-      let hitTrap = false;
-      if (!hitObstacle) {
+      if (!hitLethal && !bounced) {
         for (const trap of lvl.traps) {
           if (trap.type === 'disappearing') {
             const phase = Math.sin(timeRef.current * 0.03 + trap.phase * Math.PI * 2);
@@ -304,7 +368,8 @@ export default function GameScreen({ navigation, route }: Props) {
         }
       }
 
-      if (!hitObstacle && !hitTrap) {
+      let hitMoving = false;
+      if (!hitLethal && !bounced && !hitTrap) {
         for (let i = 0; i < lvl.movingObstacles.length; i++) {
           const mo = lvl.movingObstacles[i];
           const offset = mvOffsetsRef.current[i] ?? 0;
@@ -314,13 +379,13 @@ export default function GameScreen({ navigation, route }: Props) {
           else my += offset;
 
           if (circleRectCollision(bx, by, rad, mx, my, mo.width, mo.height)) {
-            hitObstacle = true;
+            hitMoving = true;
             break;
           }
         }
       }
 
-      if (hitObstacle || hitTrap) {
+      if (hitLethal || hitTrap || hitMoving) {
         pos.current = { x: newX, y: newY };
         setBallPos({ x: newX, y: newY });
         if (shieldRef.current && !hitTrap) {
@@ -499,6 +564,10 @@ export default function GameScreen({ navigation, route }: Props) {
     setSizeMultiplier(1);
     if (shieldTimer.current) clearTimeout(shieldTimer.current);
     if (sizeTimer.current) clearTimeout(sizeTimer.current);
+    brokenWallsRef.current = {};
+    iceStateRef.current = {};
+    setBrokenWalls({});
+    setIceBrokenState({});
   };
 
   const handleVolverMenu = () => {
@@ -539,9 +608,54 @@ export default function GameScreen({ navigation, route }: Props) {
       )}
 
       {levelData.obstacles.map((obs, i) => {
+        const key = `obs-${i}`;
+        if (obs.type === 'rotting_floor') {
+          return (
+            <View key={key} style={{
+              position: 'absolute', left: obs.x, top: obs.y,
+              width: obs.width, height: obs.height,
+              backgroundColor: '#5d4037',
+              borderWidth: 2, borderColor: '#3e2723',
+              borderRadius: 3,
+              opacity: brokenWalls[i] ? 0.2 : 1,
+            }} />
+          );
+        }
+        if (obs.type === 'fragile_wall') {
+          return (
+            <View key={key} style={{
+              position: 'absolute', left: obs.x, top: obs.y,
+              width: obs.width, height: obs.height,
+              backgroundColor: '#a1887f',
+              borderWidth: 2, borderColor: '#795548',
+              borderRadius: 4,
+              opacity: brokenWalls[i] ? 0.2 : 1,
+              justifyContent: 'center', alignItems: 'center',
+            }}>
+              <View style={{
+                width: obs.width * 0.6, height: 1,
+                backgroundColor: '#5d4037',
+              }} />
+            </View>
+          );
+        }
+        if (obs.type === 'thin_ice') {
+          const iceBroken = iceBrokenState[i];
+          if (iceBroken === 'fallen') return null;
+          return (
+            <View key={key} style={{
+              position: 'absolute', left: obs.x, top: obs.y,
+              width: obs.width, height: obs.height,
+              backgroundColor: iceBroken === 'cracking' ? 'rgba(180,220,255,0.8)' : 'rgba(200,230,255,0.5)',
+              borderWidth: iceBroken === 'cracking' ? 3 : 1.5,
+              borderColor: iceBroken === 'cracking' ? '#ef5350' : '#81d4fa',
+              borderRadius: 4,
+            }} />
+          );
+        }
         const halfW = obs.width / 2;
         return (
-          <Fragment key={`obs-${i}`}>
+          <Fragment key={key}>
             <GameSprite sprite="obstacle_left" width={halfW} height={obs.height}
               resizeMode="stretch"
               style={{ position: 'absolute', left: obs.x, top: obs.y }} />

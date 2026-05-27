@@ -2,12 +2,17 @@ const MARGIN = 40;
 const TOP_OFFSET = 100;
 const SPAWN_SAFE_RADIUS = 60;
 
+export type ObstacleType = 'wall' | 'rotting_floor' | 'fragile_wall' | 'thin_ice';
+
 export type Obstacle = {
   x: number; y: number;
   width: number; height: number;
+  type: ObstacleType;
 };
 
-export type MovingObstacle = Obstacle & {
+export type MovingObstacle = {
+  x: number; y: number;
+  width: number; height: number;
   range: number;
   speed: number;
   axis: 'x' | 'y';
@@ -158,6 +163,7 @@ function generateLevel(levelNum: number, screenW: number, screenH: number, seedO
   const allPlaced: { x: number; y: number; w: number; h: number }[] = [];
 
   const obstacles: Obstacle[] = [];
+  const obstacleTypes: ObstacleType[] = ['wall', 'rotting_floor', 'fragile_wall', 'thin_ice'];
   for (let i = 0; i < numObstacles; i++) {
     let tries = 0;
     let ox: number, oy: number, ow: number, oh: number;
@@ -168,7 +174,8 @@ function generateLevel(levelNum: number, screenW: number, screenH: number, seedO
       oh = 15 + rng() * 25;
       tries++;
     } while (isInSafeZone(ox, oy, ow, oh, cx, cy) && tries < 20);
-    obstacles.push({ x: ox, y: oy, width: ow, height: oh });
+    const ot = levelNum >= 4 ? obstacleTypes[Math.floor(rng() * obstacleTypes.length)] : 'wall';
+    obstacles.push({ x: ox, y: oy, width: ow, height: oh, type: ot });
     allPlaced.push({ x: ox, y: oy, w: ow, h: oh });
   }
 
