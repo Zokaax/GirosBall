@@ -525,14 +525,14 @@ export default function GameScreen({ navigation, route }: Props) {
       {(powerUpProgress.shield > 0 || powerUpProgress.size > 0) && (
         <View style={styles.powerUpBarContainer}>
           {powerUpProgress.shield > 0 && (
-            <View style={{ flexDirection: 'row', height: 16, marginTop: 2 }}>
-              <GameSprite sprite="bar_shield" width={Math.max(10, powerUpProgress.shield * 94)} height={16} />
-            </View>
+            <View style={[styles.powerUpBar, { width: `${powerUpProgress.shield * 100}%`, backgroundColor: '#4fc3f7' }]} />
           )}
           {powerUpProgress.size > 0 && (
-            <View style={{ flexDirection: 'row', height: 16, marginTop: 2 }}>
-              <GameSprite sprite="bar_size" width={Math.max(10, powerUpProgress.size * 95)} height={16} />
-            </View>
+            <View style={[styles.powerUpBar, {
+              width: `${powerUpProgress.size * 100}%`,
+              backgroundColor: sizeRef.current > 1 ? '#81c784' : '#ffb74d',
+              marginTop: powerUpProgress.shield > 0 ? 3 : 0,
+            }]} />
           )}
         </View>
       )}
@@ -751,9 +751,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   powerUpBarContainer: {
-    height: 20,
+    height: 6,
     paddingHorizontal: 4,
     backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  powerUpBar: {
+    height: 3,
+    borderRadius: 2,
   },
   comboCorner: {
     position: 'absolute',
