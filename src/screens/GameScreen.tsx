@@ -307,9 +307,11 @@ export default function GameScreen({ navigation, route }: Props) {
         if (minOvr === overlapLeft || minOvr === overlapRight) {
           pos.current.x = minOvr === overlapLeft ? rx - rad * 2 : rx + rw;
           vel.current.x = 0;
+          vel.current.y *= 0.85;
         } else {
           pos.current.y = minOvr === overlapTop ? ry - rad * 2 : ry + rh;
           vel.current.y = 0;
+          vel.current.x *= 0.85;
         }
         newX = pos.current.x;
         newY = pos.current.y;
@@ -374,7 +376,7 @@ export default function GameScreen({ navigation, route }: Props) {
       }
 
       let hitMoving = false;
-      if (!hitLethal && !bounced && !hitTrap) {
+      if (!hitLethal && !hitTrap) {
         for (let i = 0; i < lvl.movingObstacles.length; i++) {
           const mo = lvl.movingObstacles[i];
           const offset = mvOffsetsRef.current[i] ?? 0;
@@ -384,13 +386,15 @@ export default function GameScreen({ navigation, route }: Props) {
           else my += offset;
 
           if (circleRectCollision(bx, by, rad, mx, my, mo.width, mo.height)) {
-            hitMoving = true;
+            if (bounced) break;
+            bounceOff(mx, my, mo.width, mo.height);
+            bounced = true;
             break;
           }
         }
       }
 
-      if (hitLethal || hitTrap || hitMoving) {
+      if (hitLethal || hitTrap) {
         pos.current = { x: newX, y: newY };
         setBallPos({ x: newX, y: newY });
         if (shieldRef.current && !hitTrap) {
