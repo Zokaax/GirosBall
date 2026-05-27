@@ -5,6 +5,7 @@ import { Accelerometer } from 'expo-sensors';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Trap, type Zone } from '../data/levels';
+import GameSprite from '../graphics/Sprite';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
@@ -60,31 +61,11 @@ export default function GameScreen({ navigation, route }: Props) {
     feather: { accel: 1.5,  friction: 0.95  },
   };
 
-  const ZONE_COLORS: Record<string, string> = {
-    wind: 'rgba(100,180,255,0.35)',
-    magnetic: 'rgba(200,100,255,0.35)',
-    ice: 'rgba(180,230,255,0.35)',
-    mud: 'rgba(140,100,60,0.35)',
-  };
-
-  const BALL_COLORS: Record<BallMaterial, string> = {
-    metal: '#b0bec5',
-    plastic: '#4dd0e1',
-    feather: '#fff176',
-  };
-
   const ZONE_GLOW: Record<string, string> = {
     wind: 'rgba(100,180,255,0.4)',
     magnetic: 'rgba(200,100,255,0.4)',
     ice: 'rgba(180,230,255,0.4)',
     mud: 'rgba(140,100,60,0.4)',
-  };
-
-  const ZONE_BORDERS: Record<string, string> = {
-    wind: 'rgba(100,180,255,0.7)',
-    magnetic: 'rgba(200,100,255,0.7)',
-    ice: 'rgba(180,230,255,0.7)',
-    mud: 'rgba(140,100,60,0.7)',
   };
 
   const ballMaterialRef = useRef<BallMaterial>('plastic');
@@ -544,23 +525,20 @@ export default function GameScreen({ navigation, route }: Props) {
       {(powerUpProgress.shield > 0 || powerUpProgress.size > 0) && (
         <View style={styles.powerUpBarContainer}>
           {powerUpProgress.shield > 0 && (
-            <View style={[styles.powerUpBar, { width: `${powerUpProgress.shield * 100}%`, backgroundColor: '#4fc3f7' }]} />
+            <View style={{ flexDirection: 'row', height: 16, marginTop: 2 }}>
+              <GameSprite sprite="bar_shield" width={Math.max(10, powerUpProgress.shield * 94)} height={16} />
+            </View>
           )}
           {powerUpProgress.size > 0 && (
-            <View style={[styles.powerUpBar, {
-              width: `${powerUpProgress.size * 100}%`,
-              backgroundColor: sizeRef.current > 1 ? '#81c784' : '#ffb74d',
-              marginTop: powerUpProgress.shield > 0 ? 3 : 0,
-            }]} />
+            <View style={{ flexDirection: 'row', height: 16, marginTop: 2 }}>
+              <GameSprite sprite="bar_size" width={Math.max(10, powerUpProgress.size * 95)} height={16} />
+            </View>
           )}
         </View>
       )}
 
       {levelData.obstacles.map((obs, i) => (
-        <View
-          key={`obs-${i}`}
-          style={[styles.obstacle, { left: obs.x, top: obs.y, width: obs.width, height: obs.height }]}
-        />
+        <GameSprite key={`obs-${i}`} sprite="obstacle" width={obs.width} height={obs.height} style={{ position: 'absolute', left: obs.x, top: obs.y }} />
       ))}
 
       {levelData.movingObstacles.map((mo, i) => {
@@ -568,10 +546,7 @@ export default function GameScreen({ navigation, route }: Props) {
         const mLeft = mo.axis === 'x' ? mo.x + offset : mo.x;
         const mTop = mo.axis === 'y' ? mo.y + offset : mo.y;
         return (
-          <View
-            key={`mov-${i}`}
-            style={[styles.movingObstacle, { left: mLeft, top: mTop, width: mo.width, height: mo.height }]}
-          />
+          <GameSprite key={`mov-${i}`} sprite="moving_obstacle" width={mo.width} height={mo.height} style={{ position: 'absolute', left: mLeft, top: mTop }} />
         );
       })}
 
@@ -581,133 +556,40 @@ export default function GameScreen({ navigation, route }: Props) {
           if (phase < 0) return null;
         }
         return (
-          <View
+          <GameSprite
             key={`trap-${i}`}
-            style={[styles.trap, trap.type === 'spike' ? styles.trapSpike : styles.trapDisappearing, {
-              left: trap.x, top: trap.y,
-              width: trap.width, height: trap.height,
-            }]}
+            sprite={trap.type === 'spike' ? 'trap_spike' : 'trap_disappearing'}
+            width={trap.width} height={trap.height}
+            style={{ position: 'absolute', left: trap.x, top: trap.y }}
           />
         );
       })}
 
       {levelData.zones.map((z, i) => (
-        <View
+        <GameSprite
           key={`zone-${i}`}
-          style={[styles.zone, {
-            left: z.x, top: z.y,
-            width: z.width, height: z.height,
-            backgroundColor: ZONE_COLORS[z.type],
-            borderColor: ZONE_BORDERS[z.type],
-          }]}
+          sprite={`zone_${z.type}` as any}
+          width={z.width} height={z.height}
+          style={{ position: 'absolute', left: z.x, top: z.y, opacity: 0.5 }}
         />
       ))}
 
       {levelData.collectibles.map((c, i) => {
         if (collected[i]) return null;
         return (
-          <View
-            key={`coin-${i}`}
-            style={[styles.collectible, { left: c.x - c.radius, top: c.y - c.radius, width: c.radius * 2, height: c.radius * 2, borderRadius: c.radius }]}
-          />
+          <GameSprite key={`coin-${i}`} sprite="coin" width={c.radius * 2} height={c.radius * 2} style={{ position: 'absolute', left: c.x - c.radius, top: c.y - c.radius }} />
         );
       })}
 
       {levelData.powerUps.map((pu, i) => {
         if (collectedPowerUps[i]) return null;
-        const r = pu.radius;
-        const isShield = pu.type === 'shield';
-        const isMetal = pu.type === 'metal';
-        const isPlastic = pu.type === 'plastic';
-        const isFeather = pu.type === 'feather';
-        const isBig = pu.type === 'big';
-        const isSmall = pu.type === 'small';
-        const color = isShield ? '#4fc3f7' : isBig ? '#81c784' : isSmall ? '#ffb74d' :
-          isMetal ? '#9e9e9e' : isPlastic ? '#80cbc4' : '#ffcc02';
-        const shape = isShield ? 'shield' : isBig ? 'big' : isSmall ? 'small' :
-          isMetal ? 'square' : isPlastic ? 'diamond' : 'triangle';
-
-        if (shape === 'diamond') {
-          return (
-            <View key={`pu-${i}`} style={{
-              position: 'absolute',
-              left: pu.x - r, top: pu.y - r,
-              width: r * 2, height: r * 2,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <View style={{
-                width: r * 1.4, height: r * 1.4,
-                backgroundColor: color,
-                transform: [{ rotate: '45deg' }],
-                borderRadius: 3,
-                borderWidth: 2, borderColor: '#ffffff',
-              }} />
-            </View>
-          );
-        }
-
-        if (shape === 'triangle') {
-          return (
-            <View key={`pu-${i}`} style={{
-              position: 'absolute',
-              left: pu.x - r, top: pu.y - r,
-              width: r * 2, height: r * 2,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <View style={{
-                width: 0, height: 0,
-                borderLeftWidth: r * 0.8,
-                borderRightWidth: r * 0.8,
-                borderBottomWidth: r * 1.6,
-                borderLeftColor: 'transparent',
-                borderRightColor: 'transparent',
-                borderBottomColor: color,
-              }} />
-            </View>
-          );
-        }
-
-        if (shape === 'square') {
-          return (
-            <View key={`pu-${i}`} style={{
-              position: 'absolute',
-              left: pu.x - r, top: pu.y - r,
-              width: r * 2, height: r * 2,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <View style={{
-                width: r * 1.6, height: r * 1.6,
-                backgroundColor: color,
-                borderRadius: 3,
-                borderWidth: 2, borderColor: '#ffffff',
-              }} />
-            </View>
-          );
-        }
-
-        const innerR = shape === 'big' ? r * 0.6 : shape === 'small' ? r * 0.3 : r * 0.55;
+        const puSprite: Record<string, any> = {
+          shield: 'powerup_shield', big: 'powerup_big', small: 'powerup_small',
+          metal: 'powerup_metal', plastic: 'powerup_plastic', feather: 'powerup_feather',
+        };
+        const sz = pu.radius * 2;
         return (
-          <View key={`pu-${i}`} style={{
-            position: 'absolute',
-            left: pu.x - r, top: pu.y - r,
-            width: r * 2, height: r * 2,
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <View style={{
-              width: r * 2, height: r * 2,
-              borderRadius: r,
-              backgroundColor: color,
-              borderWidth: shape === 'shield' ? 3 : 0,
-              borderColor: '#ffffff',
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <View style={{
-                width: innerR * 2, height: innerR * 2,
-                borderRadius: innerR,
-                backgroundColor: 'rgba(255,255,255,0.5)',
-              }} />
-            </View>
-          </View>
+          <GameSprite key={`pu-${i}`} sprite={puSprite[pu.type]} width={sz} height={sz} style={{ position: 'absolute', left: pu.x - pu.radius, top: pu.y - pu.radius }} />
         );
       })}
 
@@ -717,36 +599,30 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      {activeZone && (
-        <View style={{
-          position: 'absolute',
-          left: ballPos.x - 10,
-          top: ballPos.y - 10,
-          width: currentSize + 20,
-          height: currentSize + 20,
-          borderRadius: (currentSize + 20) / 2,
-          backgroundColor: ZONE_GLOW[activeZone] ?? 'transparent',
-        }} />
-      )}
-
-      {shieldActive && (
-        <View style={[styles.shield, {
-          left: ballPos.x - 6,
-          top: ballPos.y - 6,
-          width: currentSize + 12,
-          height: currentSize + 12,
-          borderRadius: (currentSize + 12) / 2,
-        }]} />
-      )}
-
-      <View style={[styles.ball, {
-        left: ballPos.x,
-        top: ballPos.y,
-        width: currentSize,
-        height: currentSize,
-        borderRadius: currentRadius,
-        backgroundColor: BALL_COLORS[ballMaterial],
-      }]} />
+      <View style={{
+        position: 'absolute', left: ballPos.x, top: ballPos.y,
+        width: currentSize, height: currentSize,
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        {activeZone && (
+          <View style={{
+            position: 'absolute',
+            width: currentSize + 20, height: currentSize + 20,
+            borderRadius: (currentSize + 20) / 2,
+            backgroundColor: ZONE_GLOW[activeZone] ?? 'transparent',
+          }} />
+        )}
+        {shieldActive && (
+          <View style={[styles.shield, {
+            width: currentSize + 12, height: currentSize + 12,
+            borderRadius: (currentSize + 12) / 2,
+          }]} />
+        )}
+        <GameSprite
+          sprite={ballMaterial === 'metal' ? 'ball_metal' : ballMaterial === 'plastic' ? 'ball_plastic' : 'ball_feather'}
+          width={currentSize} height={currentSize}
+        />
+      </View>
 
       {gameOver && (
         <View style={styles.overlay}>
@@ -874,47 +750,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  ball: {
-    position: 'absolute',
-    width: BALL_SIZE,
-    height: BALL_SIZE,
-    borderRadius: BALL_RADIUS,
-    backgroundColor: '#e94560',
-  },
-  obstacle: {
-    position: 'absolute',
-    backgroundColor: '#533483',
-    borderRadius: 4,
-  },
-  movingObstacle: {
-    position: 'absolute',
-    backgroundColor: '#e07c24',
-    borderRadius: 4,
-  },
-  trap: {
-    position: 'absolute',
-    borderRadius: 4,
-  },
-  trapSpike: {
-    backgroundColor: '#e53935',
-    borderWidth: 2,
-    borderColor: '#ff1744',
-    transform: [{ rotate: '45deg' }],
-  },
-  trapDisappearing: {
-    backgroundColor: 'rgba(100,200,255,0.5)',
-    borderWidth: 2,
-    borderColor: 'rgba(100,200,255,0.8)',
-    borderStyle: 'dashed',
-  },
   powerUpBarContainer: {
-    height: 6,
+    height: 20,
     paddingHorizontal: 4,
     backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  powerUpBar: {
-    height: 3,
-    borderRadius: 2,
   },
   comboCorner: {
     position: 'absolute',
@@ -930,21 +769,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
-  zone: {
-    position: 'absolute',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  collectible: {
-    position: 'absolute',
-    backgroundColor: '#ffd700',
-  },
-  powerUp: {
-    position: 'absolute',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-  },
+
   shield: {
     position: 'absolute',
     borderWidth: 3,
