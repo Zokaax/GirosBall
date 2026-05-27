@@ -32,10 +32,11 @@ type Props = {
   sprite: SpriteKey;
   width?: number;
   height?: number;
+  resizeMode?: 'contain' | 'cover' | 'stretch';
   style?: object;
 };
 
-export default function GameSprite({ sprite, width, height, style }: Props) {
+export default function GameSprite({ sprite, width, height, resizeMode = 'contain', style }: Props) {
   const info = SPRITE_MAP[sprite];
   const w = width ?? info.width;
   const h = height ?? info.height;
@@ -44,7 +45,7 @@ export default function GameSprite({ sprite, width, height, style }: Props) {
 
   return (
     <View style={[{ width: w, height: h, overflow: 'hidden' }, style]}>
-      <Image source={source} style={styles.image} resizeMode="contain" />
+      <Image source={source} style={styles.image} resizeMode={resizeMode} />
     </View>
   );
 }

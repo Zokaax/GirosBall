@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions, Vibration } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
@@ -538,14 +538,19 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      {levelData.obstacles.map((obs, i) => (
-        <GameSprite
-          key={`obs-${i}`}
-          sprite={i % 2 === 0 ? 'obstacle_left' : 'obstacle_right'}
-          width={obs.width} height={obs.height}
-          style={{ position: 'absolute', left: obs.x, top: obs.y }}
-        />
-      ))}
+      {levelData.obstacles.map((obs, i) => {
+        const halfW = obs.width / 2;
+        return (
+          <Fragment key={`obs-${i}`}>
+            <GameSprite sprite="obstacle_left" width={halfW} height={obs.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: obs.x, top: obs.y }} />
+            <GameSprite sprite="obstacle_right" width={halfW} height={obs.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: obs.x + halfW, top: obs.y }} />
+          </Fragment>
+        );
+      })}
 
       {levelData.movingObstacles.map((mo, i) => {
         const offset = mvOffsets[i] ?? 0;
@@ -561,14 +566,16 @@ export default function GameScreen({ navigation, route }: Props) {
           const phase = Math.sin(timeRef.current * 0.03 + trap.phase * Math.PI * 2);
           if (phase < 0) return null;
         }
-        const tw = Math.max(trap.width, trap.type === 'spike' ? 40 : 60);
-        const th = Math.max(trap.height, trap.type === 'spike' ? 40 : 30);
+        const isSpike = trap.type === 'spike';
+        const tw = isSpike ? trap.width / 2 : trap.width;
+        const th = trap.height / 2;
         return (
           <GameSprite
             key={`trap-${i}`}
-            sprite={trap.type === 'spike' ? 'trap_spike' : 'trap_disappearing'}
+            sprite={isSpike ? 'trap_spike' : 'trap_disappearing'}
             width={tw} height={th}
-            style={{ position: 'absolute', left: trap.x - (tw - trap.width) / 2, top: trap.y - (th - trap.height) / 2 }}
+            resizeMode="stretch"
+            style={{ position: 'absolute', left: trap.x + (trap.width - tw) / 2, top: trap.y + (trap.height - th) / 2 }}
           />
         );
       })}
@@ -640,12 +647,22 @@ export default function GameScreen({ navigation, route }: Props) {
           {levelData.obstacles.map((o, i) => (
             <View key={`db-o-${i}`} style={[styles.debugBox, { left: o.x, top: o.y, width: o.width, height: o.height, borderColor: '#ff0' }]} />
           ))}
-          {levelData.movingObstacles.map((mo, i) => {
-            const offset = mvOffsets[i] ?? 0;
-            const ml = mo.axis === 'x' ? mo.x + offset : mo.x;
-            const mt = mo.axis === 'y' ? mo.y + offset : mo.y;
-            return <View key={`db-m-${i}`} style={[styles.debugBox, { left: ml, top: mt, width: mo.width, height: mo.height, borderColor: '#f80' }]} />;
-          })}
+      {levelData.movingObstacles.map((mo, i) => {
+        const offset = mvOffsets[i] ?? 0;
+        const ml = mo.axis === 'x' ? mo.x + offset : mo.x;
+        const mt = mo.axis === 'y' ? mo.y + offset : mo.y;
+        const halfW = mo.width / 2;
+        return (
+          <Fragment key={`mo-${i}`}>
+            <GameSprite sprite="moving_obstacle" width={halfW} height={mo.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: ml, top: mt }} />
+            <GameSprite sprite="moving_obstacle" width={halfW} height={mo.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: ml + halfW, top: mt }} />
+          </Fragment>
+        );
+      })}
           {levelData.traps.map((t, i) => (
             <View key={`db-t-${i}`} style={[styles.debugBox, { left: t.x, top: t.y, width: t.width, height: t.height, borderColor: '#f00' }]} />
           ))}
