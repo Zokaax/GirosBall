@@ -52,6 +52,23 @@ Este documento registra todas las funcionalidades, decisiones técnicas y cambio
   - Dimensiones de la pantalla del dispositivo
   - Cacheo por clave `nivel-ancho-alto` para evitar regeneraciones.
 
+### Sprites extraídos del sprite sheet
+- Se extrajeron 24 sprites individuales de `assets/sprites.png` (1200x896px) usando una grilla **8×6** (150px columnas, ~128-149px filas).
+- Mapeo en `src/graphics/sprites.ts` con tipos `SpriteKey` y dimensiones exactas.
+- Sprites para: bola (3 materiales), monedas, obstáculos (left/right/moving), power-ups, trampas, zonas interactivas.
+- Componente `GameSprite` en `src/graphics/Sprite.tsx` con carga vía `require()`, soporte de `resizeMode` (contain/stretch/cover).
+
+### Corrección de sprites vs colliders
+- **Obstáculos estáticos**: Se dividen en 2 mitades (`obstacle_left` + `obstacle_right`) lado a lado con `resizeMode="stretch"`, cubriendo el ancho completo del hitbox.
+- **Obstáculos móviles**: Mismo sprite repetido 2 veces, mismo esquema de tiling.
+- **Trampas**: Se renderizan con `resizeMode="stretch"` al tamaño exacto del hitbox, forzando el sprite a llenar el área de colisión.
+
+### Modo debug de hitboxes
+- Botón "Ver Hitboxes" en el menú de pausa que dibuja bordes de colisión semitransparentes sobre todos los elementos.
+- Código de colores por tipo: amarillo (obstáculo), naranja (móvil), rojo (trampa), dorado (moneda), cian (power-up), verde (zona), blanco (bola).
+
+---
+
 ### Verificación de alcanzabilidad (BFS)
 - **No especificado en el plan**: Se implementó un algoritmo de **flood fill (BFS)** sobre una grilla de 15px que verifica que todos los coleccionables sean alcanzables desde el punto de spawn.
 - Si algún coleccionable queda inaccesible (rodeado por obstáculos), el nivel se regenera con una semilla distinta (hasta 10 intentos).

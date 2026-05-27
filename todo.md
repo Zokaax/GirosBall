@@ -35,21 +35,23 @@
 | **Sistema de combo/racha** | ✅ |
 | **Bonificación por tiempo** | ✅ |
 | **Trampas: pinchos y plataformas que desaparecen** | ✅ |
+| **Sistema de sprites (sprite sheet + GameSprite)** | ✅ |
+| **Modo debug de hitboxes** | ✅ |
 
 ---
 
 ## Mejoras priorizadas
 
 ### Prioridad alta — Jugabilidad base
-- [ ] **Power-ups restantes**: Refinar duración, rareza, balance de los actuales
-- [ ] **Materiales restantes**: Ajuste fino de físicas
+- [ ] **Balance de power-ups**: Refinar duración, rareza, spawn rate
+- [ ] **Ajuste fino de físicas**: Balancear materiales metal/plastic/feather
 - [ ] **Tutorial interactivo**: Nivel guiado inicial explicando controles
 - [ ] **Dificultad dinámica**: Ajustar generación según rendimiento
 
 ### Prioridad media — Contenido y retos
 - [ ] **Jefes de nivel**: Obstáculo grande con mecánica especial cada 5 niveles
 - [ ] **Mapas personalizados**: Reemplazar generación procedural con niveles diseñados manualmente
-- [ ] **Más tipos de trampa**: Pinchos, plataformas que desaparecen, teletransporte forzado, suelo que se rompe
+- [ ] **Más tipos de trampa**: Teletransporte forzado, suelo que se rompe
 
 ### Prioridad baja — Pulido visual y audio
 - [ ] **Efectos de partículas**: Al recolectar monedas, al morir, al pasar de nivel
