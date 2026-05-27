@@ -46,6 +46,7 @@ export default function GameScreen({ navigation, route }: Props) {
   const [paused, setPaused] = useState(false);
   const [levelTime, setLevelTime] = useState(0);
   const [startCountdown, setStartCountdown] = useState(0);
+  const [debugHitboxes, setDebugHitboxes] = useState(false);
   const [comboCount, setComboCount] = useState(0);
   const [powerUpProgress, setPowerUpProgress] = useState({ shield: 0, size: 0 });
 
@@ -631,6 +632,41 @@ export default function GameScreen({ navigation, route }: Props) {
         />
       </View>
 
+      {debugHitboxes && (
+        <View style={styles.debugContainer} pointerEvents="none">
+          <View style={[styles.debugLabel, { top: 2, left: 8 }]}>
+            <Text style={styles.debugLabelText}>HITBOXES</Text>
+          </View>
+          {levelData.obstacles.map((o, i) => (
+            <View key={`db-o-${i}`} style={[styles.debugBox, { left: o.x, top: o.y, width: o.width, height: o.height, borderColor: '#ff0' }]} />
+          ))}
+          {levelData.movingObstacles.map((mo, i) => {
+            const offset = mvOffsets[i] ?? 0;
+            const ml = mo.axis === 'x' ? mo.x + offset : mo.x;
+            const mt = mo.axis === 'y' ? mo.y + offset : mo.y;
+            return <View key={`db-m-${i}`} style={[styles.debugBox, { left: ml, top: mt, width: mo.width, height: mo.height, borderColor: '#f80' }]} />;
+          })}
+          {levelData.traps.map((t, i) => (
+            <View key={`db-t-${i}`} style={[styles.debugBox, { left: t.x, top: t.y, width: t.width, height: t.height, borderColor: '#f00' }]} />
+          ))}
+          {levelData.collectibles.map((c, i) => (
+            !collected[i] && <View key={`db-c-${i}`} style={[styles.debugCircle, { left: c.x - c.radius, top: c.y - c.radius, width: c.radius * 2, height: c.radius * 2, borderRadius: c.radius, borderColor: '#ffd700' }]} />
+          ))}
+          {levelData.powerUps.map((pu, i) => (
+            !collectedPowerUps[i] && <View key={`db-p-${i}`} style={[styles.debugCircle, { left: pu.x - pu.radius, top: pu.y - pu.radius, width: pu.radius * 2, height: pu.radius * 2, borderRadius: pu.radius, borderColor: '#0ff' }]} />
+          ))}
+          {levelData.zones.map((z, i) => (
+            <View key={`db-z-${i}`} style={[styles.debugBox, { left: z.x, top: z.y, width: z.width, height: z.height, borderColor: '#0f0' }]} />
+          ))}
+          <View style={[styles.debugCircle, {
+            left: ballPos.x, top: ballPos.y,
+            width: currentSize, height: currentSize,
+            borderRadius: currentRadius,
+            borderColor: '#fff',
+          }]} />
+        </View>
+      )}
+
       {gameOver && (
         <View style={styles.overlay}>
           <View style={styles.gameOverBox}>
@@ -679,6 +715,14 @@ export default function GameScreen({ navigation, route }: Props) {
               }}
             >
               <Text style={styles.buttonText}>Reanudar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSecondary]}
+              onPress={() => {
+                setDebugHitboxes((v) => !v);
+              }}
+            >
+              <Text style={styles.buttonText}>{debugHitboxes ? '🔲 Ocultar Hitboxes' : '⬜ Ver Hitboxes'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.buttonSecondary]}
@@ -893,6 +937,33 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 8,
+  },
+  debugContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 90,
+  },
+  debugBox: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    borderColor: '#ff0',
+  },
+  debugCircle: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  debugLabel: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    zIndex: 99,
+  },
+  debugLabelText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   nameInput: {
     backgroundColor: '#16213e',
