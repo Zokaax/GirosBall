@@ -804,8 +804,26 @@ export default function GameScreen({ navigation, route }: Props) {
       {debugHitboxes && (
         <View style={styles.debugContainer} pointerEvents="none">
           <View style={[styles.debugLabel, { top: 2, left: 8 }]}>
-            <Text style={styles.debugLabelText}>HITBOXES</Text>
+            <Text style={styles.debugLabelText}>HITBOXES + GRID</Text>
           </View>
+          {/* Grid lines */}
+          {Array.from({ length: CELL_COLS + 1 }, (_, col) => (
+            <View key={`grid-v-${col}`} style={{
+              position: 'absolute', left: col * (screenWidth / CELL_COLS), top: 0,
+              width: 1, height: levelData.worldHeight,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+            }} />
+          ))}
+          {(() => {
+            const totalRows = Math.ceil((levelData.worldHeight - TOP_OFFSET) / CELL_H);
+            return Array.from({ length: totalRows + 1 }, (_, row) => (
+              <View key={`grid-h-${row}`} style={{
+                position: 'absolute', left: 0, top: TOP_OFFSET + row * CELL_H,
+                width: screenWidth, height: 1,
+                backgroundColor: 'rgba(255,255,255,0.1)',
+              }} />
+            ));
+          })()}
           {levelData.obstacles.map((o, i) => (
             <View key={`db-o-${i}`} style={[styles.debugBox, { left: o.x, top: o.y, width: o.width, height: o.height, borderColor: '#ff0' }]} />
           ))}
