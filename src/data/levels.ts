@@ -63,12 +63,12 @@ export type LevelData = {
   worldHeight: number;
 };
 
-const CELL_COLS = 10;
-const CELL_H = 48;
+const CELL_COLS = 8;
+const CELL_H = 54;
 const COL_RADIUS = 14;
 const SPAWN_ROW = 2;
-const SPAWN_COL_START = 3;
-const SPAWN_COL_END = 6;
+const SPAWN_COL_START = 2;
+const SPAWN_COL_END = 5;
 
 function seededRandom(seed: number) {
   let s = seed;

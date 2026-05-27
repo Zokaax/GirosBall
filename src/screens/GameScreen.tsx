@@ -21,7 +21,7 @@ const TOTAL_LEVELS = 20;
 const POWERUP_DURATION = 6000;
 const TOP_OFFSET = 100;
 const CELL_H = 48;
-const CELL_COLS = 10;
+const CELL_COLS = 8;
 const SPAWN_ROW = 2;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
