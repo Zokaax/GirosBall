@@ -64,7 +64,6 @@ export type LevelData = {
 };
 
 const CELL_COLS = 8;
-const CELL_H = 54;
 const COL_RADIUS = 14;
 const SPAWN_ROW = 2;
 const SPAWN_COL_START = 2;
@@ -81,6 +80,7 @@ function seededRandom(seed: number) {
 function generateLevel(levelNum: number, screenW: number, screenH: number, seedOffset = 0): LevelData {
   const rng = seededRandom(levelNum * 7919 + 42 + seedOffset * 9973);
   const CELL_W = screenW / CELL_COLS;
+  const CELL_H = CELL_W;
   const totalRows = 10 + levelNum * 3;
   const worldHeight = TOP_OFFSET + MARGIN + totalRows * CELL_H;
   const grid: boolean[][] = Array.from({ length: totalRows }, () => Array(CELL_COLS).fill(false));
@@ -266,6 +266,7 @@ export function getLevel(levelNum: number, screenW: number, screenH: number): Le
     for (let attempt = 0; attempt < 10; attempt++) {
       data = generateLevel(levelNum, screenW, screenH, attempt);
       const CELL_W = screenW / CELL_COLS;
+      const CELL_H = CELL_W;
       const totalRows = 10 + levelNum * 3;
       const targets: { r: number; c: number }[] = data.collectibles.map((c) => ({
         r: Math.floor((c.y - TOP_OFFSET) / CELL_H),

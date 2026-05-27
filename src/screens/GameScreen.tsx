@@ -10,8 +10,6 @@ import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
 
-const BALL_RADIUS = 20;
-const BALL_SIZE = BALL_RADIUS * 2;
 const SPEED_X = 1400;
 const SPEED_Y = 1200;
 const FRICTION = 0.97;
@@ -20,7 +18,6 @@ const INITIAL_LIVES = 5;
 const TOTAL_LEVELS = 20;
 const POWERUP_DURATION = 6000;
 const TOP_OFFSET = 100;
-const CELL_H = 48;
 const CELL_COLS = 8;
 const SPAWN_ROW = 2;
 
@@ -29,8 +26,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
 export default function GameScreen({ navigation, route }: Props) {
   const startLevel = route.params?.startLevel ?? 1;
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const centerX = screenWidth / 2 - BALL_SIZE / 2;
-  const spawnY = TOP_OFFSET + SPAWN_ROW * CELL_H - BALL_RADIUS;
+  const cellSize = screenWidth / CELL_COLS;
+  const ballRadius = cellSize * 0.45;
+  const ballSize = ballRadius * 2;
+  const centerX = screenWidth / 2 - ballSize / 2;
+  const spawnY = TOP_OFFSET + SPAWN_ROW * cellSize - ballRadius;
 
   const [ballPos, setBallPos] = useState({ x: centerX, y: spawnY });
   const [camY, setCamY] = useState(0);
@@ -85,7 +85,7 @@ export default function GameScreen({ navigation, route }: Props) {
   const brokenWallsRef = useRef<Record<number, boolean>>({});
   const iceStateRef = useRef<Record<number, { state: 'intact' | 'cracking' | 'fallen'; timer: number }>>({});
 
-  const currentRadius = BALL_RADIUS * sizeRef.current;
+  const currentRadius = ballRadius * sizeRef.current;
   const currentSize = currentRadius * 2;
 
   const pausedRef = useRef(false);
@@ -229,7 +229,7 @@ export default function GameScreen({ navigation, route }: Props) {
       }
 
       timeRef.current += 1;
-      const rad = BALL_RADIUS * sizeRef.current;
+      const rad = ballRadius * sizeRef.current;
       const sz = rad * 2;
 
       const mat = ballMaterialRef.current;
@@ -522,17 +522,17 @@ export default function GameScreen({ navigation, route }: Props) {
     } else if (type === 'big' || type === 'small') {
       const mult = type === 'big' ? 1.5 : 0.5;
       if (sizeTimer.current) clearTimeout(sizeTimer.current);
-      const oldR = BALL_RADIUS * sizeRef.current;
-      const newR = BALL_RADIUS * mult;
+      const oldR = ballRadius * sizeRef.current;
+      const newR = ballRadius * mult;
       pos.current.x += oldR - newR;
       pos.current.y += oldR - newR;
       sizeRef.current = mult;
       setSizeMultiplier(mult);
       setBallPos({ x: pos.current.x, y: pos.current.y });
       const resetSize = () => {
-        const oldR2 = BALL_RADIUS * sizeRef.current;
-        pos.current.x += oldR2 - BALL_RADIUS;
-        pos.current.y += oldR2 - BALL_RADIUS;
+        const oldR2 = ballRadius * sizeRef.current;
+        pos.current.x += oldR2 - ballRadius;
+        pos.current.y += oldR2 - ballRadius;
         sizeRef.current = 1;
         setSizeMultiplier(1);
         setBallPos({ x: pos.current.x, y: pos.current.y });
@@ -754,7 +754,7 @@ export default function GameScreen({ navigation, route }: Props) {
       {levelData.collectibles.map((c, i) => {
         if (collected[i]) return null;
         return (
-          <GameSprite key={`coin-${i}`} sprite="coin" width={c.radius * 2} height={c.radius * 2} style={{ position: 'absolute', left: c.x - c.radius, top: c.y - c.radius }} />
+          <GameSprite key={`coin-${i}`} sprite="coin" width={cellSize} height={cellSize} style={{ position: 'absolute', left: c.x - cellSize / 2, top: c.y - cellSize / 2 }} />
         );
       })}
 
@@ -764,9 +764,8 @@ export default function GameScreen({ navigation, route }: Props) {
           shield: 'powerup_shield', big: 'powerup_big', small: 'powerup_small',
           metal: 'powerup_metal', plastic: 'powerup_plastic', feather: 'powerup_feather',
         };
-        const sz = pu.radius * 2;
         return (
-          <GameSprite key={`pu-${i}`} sprite={puSprite[pu.type]} width={sz} height={sz} style={{ position: 'absolute', left: pu.x - pu.radius, top: pu.y - pu.radius }} />
+          <GameSprite key={`pu-${i}`} sprite={puSprite[pu.type]} width={cellSize} height={cellSize} style={{ position: 'absolute', left: pu.x - cellSize / 2, top: pu.y - cellSize / 2 }} />
         );
       })}
 
@@ -815,10 +814,10 @@ export default function GameScreen({ navigation, route }: Props) {
             }} />
           ))}
           {(() => {
-            const totalRows = Math.ceil((levelData.worldHeight - TOP_OFFSET) / CELL_H);
+            const totalRows = Math.ceil((levelData.worldHeight - TOP_OFFSET) / cellSize);
             return Array.from({ length: totalRows + 1 }, (_, row) => (
               <View key={`grid-h-${row}`} style={{
-                position: 'absolute', left: 0, top: TOP_OFFSET + row * CELL_H,
+                position: 'absolute', left: 0, top: TOP_OFFSET + row * cellSize,
                 width: screenWidth, height: 1,
                 backgroundColor: 'rgba(255,255,255,0.1)',
               }} />
