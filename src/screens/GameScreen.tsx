@@ -139,6 +139,10 @@ export default function GameScreen({ navigation, route }: Props) {
     vel.current = { x: 0, y: 0 };
     setBallPos({ x: centerX, y: centerY });
     timeRef.current = 0;
+    brokenWallsRef.current = {};
+    iceStateRef.current = {};
+    setBrokenWalls({});
+    setIceBrokenState({});
   }, [centerX, centerY, screenWidth, screenHeight]);
 
   useEffect(() => {
@@ -185,6 +189,8 @@ export default function GameScreen({ navigation, route }: Props) {
     Vibration.vibrate(100);
     livesRef.current -= 1;
     setLives(livesRef.current);
+    iceStateRef.current = {};
+    setIceBrokenState({});
     if (livesRef.current <= 0) {
       gameOverRef.current = true;
       setGameOver(true);
@@ -300,12 +306,10 @@ export default function GameScreen({ navigation, route }: Props) {
         const minOvr = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
         if (minOvr === overlapLeft || minOvr === overlapRight) {
           pos.current.x = minOvr === overlapLeft ? rx - rad * 2 : rx + rw;
-          setBallPos({ x: pos.current.x, y: pos.current.y });
-          vel.current.x *= -0.5;
+          vel.current.x = 0;
         } else {
           pos.current.y = minOvr === overlapTop ? ry - rad * 2 : ry + rh;
-          setBallPos({ x: pos.current.x, y: pos.current.y });
-          vel.current.y *= -0.5;
+          vel.current.y = 0;
         }
         newX = pos.current.x;
         newY = pos.current.y;
@@ -361,6 +365,7 @@ export default function GameScreen({ navigation, route }: Props) {
             const phase = Math.sin(timeRef.current * 0.03 + trap.phase * Math.PI * 2);
             if (phase < 0) continue;
           }
+          if (trap.type === 'spike' && mat === 'metal') continue;
           if (circleRectCollision(bx, by, rad, trap.x, trap.y, trap.width, trap.height)) {
             hitTrap = true;
             break;
@@ -641,7 +646,25 @@ export default function GameScreen({ navigation, route }: Props) {
         }
         if (obs.type === 'thin_ice') {
           const iceBroken = iceBrokenState[i];
-          if (iceBroken === 'fallen') return null;
+          if (iceBroken === 'fallen') {
+            return (
+              <View key={key} style={{
+                position: 'absolute', left: obs.x, top: obs.y,
+                width: obs.width, height: obs.height,
+                backgroundColor: 'rgba(30,60,90,0.5)',
+                borderWidth: 1,
+                borderColor: 'rgba(30,60,90,0.8)',
+                borderRadius: 4,
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <View style={{
+                  width: obs.width * 0.4, height: obs.height * 0.4,
+                  borderRadius: 10,
+                  backgroundColor: 'rgba(10,30,50,0.6)',
+                }} />
+              </View>
+            );
+          }
           return (
             <View key={key} style={{
               position: 'absolute', left: obs.x, top: obs.y,
