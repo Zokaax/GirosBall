@@ -556,8 +556,16 @@ export default function GameScreen({ navigation, route }: Props) {
         const offset = mvOffsets[i] ?? 0;
         const mLeft = mo.axis === 'x' ? mo.x + offset : mo.x;
         const mTop = mo.axis === 'y' ? mo.y + offset : mo.y;
+        const halfW = mo.width / 2;
         return (
-          <GameSprite key={`mov-${i}`} sprite="moving_obstacle" width={mo.width} height={mo.height} style={{ position: 'absolute', left: mLeft, top: mTop }} />
+          <Fragment key={`mov-${i}`}>
+            <GameSprite sprite="moving_obstacle" width={halfW} height={mo.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: mLeft, top: mTop }} />
+            <GameSprite sprite="moving_obstacle" width={halfW} height={mo.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: mLeft + halfW, top: mTop }} />
+          </Fragment>
         );
       })}
 
