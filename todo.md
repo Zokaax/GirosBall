@@ -41,6 +41,8 @@
 | **Transición suave entre niveles** | ✅ |
 | **Temas visuales por rango de niveles** | ✅ |
 | **Contador de monedas en HUD** | ✅ |
+| **Interpolación de tamaño power-ups** | ✅ |
+| **HUD con fondo sólido** | ✅ |
 
 ---
 

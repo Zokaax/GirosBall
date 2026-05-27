@@ -96,6 +96,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const shieldStartRef = useRef(0);
   const sizeStartRef = useRef(0);
 
+  const displaySizeRef = useRef(ballSize);
+
   const pos = useRef({ x: centerX, y: spawnY });
   const vel = useRef({ x: 0, y: 0 });
   const livesRef = useRef(INITIAL_LIVES);
@@ -188,12 +190,16 @@ export default function GameScreen({ navigation, route }: Props) {
     dyingRef.current = 0;
     hideBallRef.current = false;
     respawnBlinkRef.current = 0;
+    displaySizeRef.current = ballSize;
     camAnimRef.current = null;
     levelCompleteRef.current = 0;
     particlesRef.current = [];
 
     fadeAnim.setValue(1);
-    Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start();
+    Animated.sequence([
+      Animated.delay(80),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
+    ]).start();
   }, [centerX, spawnY, screenWidth, screenHeight, fadeAnim]);
 
   useEffect(() => {
@@ -326,6 +332,10 @@ export default function GameScreen({ navigation, route }: Props) {
       timeRef.current += 1;
       const rad = ballRadius * sizeRef.current;
       const sz = rad * 2;
+      if (displaySizeRef.current !== sz) {
+        displaySizeRef.current += (sz - displaySizeRef.current) * 0.15;
+        if (Math.abs(displaySizeRef.current - sz) < 0.5) displaySizeRef.current = sz;
+      }
 
       const mat = ballMaterialRef.current;
       const phys = MATERIAL_PHYSICS[mat];
@@ -703,21 +713,14 @@ export default function GameScreen({ navigation, route }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
-      <View style={[styles.hud, { backgroundColor: bgColor + 'cc' }]}>
-        <Text style={styles.hudText}>
-          {'♥'.repeat(Math.max(0, lives))}
-        </Text>
+      <View style={styles.hud}>
+        <Text style={styles.hudText}>{'♥'.repeat(Math.max(0, lives))}</Text>
         <Text style={styles.hudText}>💎 {collectedCount}/{totalCoins}</Text>
         <Text style={styles.hudText}>Score: {score}</Text>
         <Text style={styles.hudText}>
           ⏱ {String(Math.floor(levelTime / 3600)).padStart(2, '0')}:{String(Math.floor(levelTime / 60) % 60).padStart(2, '0')}
         </Text>
-        <Text style={styles.hudText}>
-          {ballMaterial === 'metal' ? '🔩' : ballMaterial === 'feather' ? '🪶' : '🧊'}{' '}
-          {shieldActive ? '🛡 ' : ''}{sizeMultiplier !== 1 ? (sizeMultiplier > 1 ? '⬆' : '⬇') : ''}{' '}
-          {activeZone ? (activeZone === 'wind' ? '💨' : activeZone === 'magnetic' ? '🧲' : activeZone === 'ice' ? '❄️' : '💩') : ''}{' '}
-          Nv:{level}
-        </Text>
+        <Text style={styles.hudText}>Nv:{level}</Text>
       </View>
 
       {(powerUpProgress.shield > 0 || powerUpProgress.size > 0) && (
@@ -893,30 +896,32 @@ export default function GameScreen({ navigation, route }: Props) {
 
       {!hideBallRef.current && (() => {
         const blink = respawnBlinkRef.current > 0 && (Math.floor(respawnBlinkRef.current / 4) % 2 === 0);
+        const dispSize = displaySizeRef.current;
+        const dispRadius = dispSize / 2;
         return (
           <View style={{
             position: 'absolute', left: ballPos.x, top: ballPos.y,
-            width: currentSize, height: currentSize,
+            width: dispSize, height: dispSize,
             alignItems: 'center', justifyContent: 'center',
             opacity: blink ? 0.25 : 1,
           }}>
             {activeZone && (
               <View style={{
                 position: 'absolute',
-                width: currentSize + 20, height: currentSize + 20,
-                borderRadius: (currentSize + 20) / 2,
+                width: dispSize + 20, height: dispSize + 20,
+                borderRadius: (dispSize + 20) / 2,
                 backgroundColor: ZONE_GLOW[activeZone] ?? 'transparent',
               }} />
             )}
             {shieldActive && (
               <View style={[styles.shield, {
-                width: currentSize + 12, height: currentSize + 12,
-                borderRadius: (currentSize + 12) / 2,
+                width: dispSize + 12, height: dispSize + 12,
+                borderRadius: (dispSize + 12) / 2,
               }]} />
             )}
             <GameSprite
               sprite={ballMaterial === 'metal' ? 'ball_metal' : ballMaterial === 'plastic' ? 'ball_plastic' : 'ball_feather'}
-              width={currentSize} height={currentSize}
+              width={dispSize} height={dispSize}
             />
           </View>
         );
@@ -1118,10 +1123,11 @@ const styles = StyleSheet.create({
   hud: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 50,
-    paddingBottom: 10,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingBottom: 8,
+    backgroundColor: '#111',
+    zIndex: 60,
   },
   hudText: {
     color: '#ffffff',

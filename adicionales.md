@@ -92,6 +92,23 @@ Este documento registra todas las funcionalidades, decisiones técnicas y cambio
 - Al cargar un nuevo nivel, el overlay hace fade de opacidad 1 → 0 en 400ms.
 - La cámara se posiciona correctamente antes del fade para que la bola sea visible desde el primer frame.
 
+### Interpolación de tamaño en power-ups
+- Al activar un power-up de agrandar/encoger, el `sizeRef` cambia instantáneamente para la física, pero el `displaySizeRef` interpola suavemente (lerp 0.15 por frame) hacia el tamaño objetivo.
+- Al expirar el power-up, ocurre la interpolación inversa.
+- Esto evita el cambio brusco de tamaño visual de la bola.
+
+### Fondo de HUD sólido
+- El HUD ahora tiene fondo `#111` sólido (sin transparencia) con `zIndex: 60` para evitar que obstáculos u otros elementos del mundo se vean por debajo.
+
+### Transición de nivel sin parpadeo
+- Se agregó `Animated.delay(80ms)` antes del fade para asegurar que el nuevo nivel esté completamente renderizado antes de comenzar la transición.
+- La duración del fade se redujo a 350ms.
+
+### Simplificación del HUD
+- Se eliminaron los íconos de estado (material, escudo, tamaño, zona) del texto del HUD.
+- Estos efectos ahora se comunican visualmente: sprite de la bola para el material, anillo para escudo, brillo para zona, tamaño visible de la bola.
+- El HUD solo muestra: vidas, monedas (X/Y), score, timer, nivel.
+
 ### Temas visuales por rango de niveles
 - El color de fondo del juego varía según el nivel para dar sensación de progresión:
   - Niveles 1-5: azul marino oscuro (`#1a1a2e`)
