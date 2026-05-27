@@ -75,16 +75,17 @@ Este documento registra todas las funcionalidades, decisiones técnicas y cambio
 - Cada partícula tiene velocidad radial aleatoria, gravedad/dirección constante, vida útil de ~25 frames, y opacidad decreciente.
 
 ### Animación de muerte
-- Al morir, la bola se congela en la posición de la muerte durante ~800ms (50 frames) mostrando las partículas rojas.
-- La cámara permanece fija en la escena de la muerte durante ese período.
-- Pasado el delay, se descuenta la vida, la bola reaparece en el spawn, y la cámara interpola suavemente (smoothstep, 25 frames ~400ms) desde la posición de muerte hasta el spawn.
-- Si el escudo absorbe el golpe, la animación dura solo ~130ms (8 frames) y no hay interpolación de cámara.
-- La cámara no sigue a la bola durante la animación de respawn para no interrumpir la interpolación.
+- Al morir, la bola se oculta inmediatamente (`hideBallRef`) y se muestran 16 partículas rojas en la posición de la muerte.
+- La cámara permanece fija en la escena de la muerte durante ~800ms (50 frames).
+- Pasado el delay, se descuenta la vida, la bola se reposiciona en el spawn (oculta), y la cámara interpola suavemente (smoothstep, 25 frames ~400ms) desde la muerte hasta el spawn.
+- Al completar la interpolación, la bola aparece con un parpadeo de 24 frames (~400ms) alternando opacidad entre 1.0 y 0.25 cada 4 frames.
+- Si el escudo absorbe el golpe, la animación dura solo ~130ms (8 frames) y no se oculta la bola ni hay interpolación.
 
 ### Animación de nivel completado
-- Al recoger la última moneda, el juego se congela ~2 segundos (120 frames).
-- Cada 15 frames estalla un "fuego artificial" en una posición aleatoria del tercio superior de la pantalla: 15 partículas con colores brillantes (rojo, verde, azul, amarillo, magenta, naranja).
-- Tras los 2 segundos, se ejecuta `nextLevel()` que dispara el fade overlay negro y carga el siguiente nivel.
+- Al recoger la última moneda, el juego se congela ~1 segundo (60 frames).
+- Cada 8 frames (cada ~130ms) estalla un "fuego artificial" con 18 partículas en una posición aleatoria visible dentro del área de la cámara (`camY + random * screenHeight * 0.5`).
+- Colores: rojo, verde, azul, amarillo, magenta, naranja.
+- Tras el segundo, se ejecuta `nextLevel()` que dispara el fade overlay negro y carga el siguiente nivel.
 
 ### Transición suave entre niveles
 - Overlay negro full-screen controlado por `Animated.Value` con `useNativeDriver`.

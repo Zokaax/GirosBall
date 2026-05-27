@@ -128,6 +128,8 @@ export default function GameScreen({ navigation, route }: Props) {
   }, []);
 
   const dyingRef = useRef(0);
+  const hideBallRef = useRef(false);
+  const respawnBlinkRef = useRef(0);
   const camAnimRef = useRef<{ from: number; to: number; progress: number; duration: number } | null>(null);
   const levelCompleteRef = useRef(0);
   const fireworkColors = ['#ff4444', '#44ff44', '#44aaff', '#ffff44', '#ff44ff', '#ff8844'];
@@ -184,6 +186,8 @@ export default function GameScreen({ navigation, route }: Props) {
     setIceBrokenState({});
 
     dyingRef.current = 0;
+    hideBallRef.current = false;
+    respawnBlinkRef.current = 0;
     camAnimRef.current = null;
     levelCompleteRef.current = 0;
     particlesRef.current = [];
@@ -291,11 +295,11 @@ export default function GameScreen({ navigation, route }: Props) {
 
       if (levelCompleteRef.current > 0) {
         levelCompleteRef.current--;
-        if (levelCompleteRef.current % 15 === 0) {
+        if (levelCompleteRef.current % 8 === 0) {
           const fx = Math.random() * screenWidth;
-          const fy = Math.random() * screenHeight * 0.4;
+          const fy = camYRef.current + Math.random() * screenHeight * 0.5;
           const c = fireworkColors[Math.floor(Math.random() * fireworkColors.length)];
-          spawnParticles(fx, fy, c, 15);
+          spawnParticles(fx, fy, c, 18);
         }
         if (levelCompleteRef.current === 0) {
           nextLevel();
@@ -310,8 +314,14 @@ export default function GameScreen({ navigation, route }: Props) {
         const cur = camAnimRef.current.from + (camAnimRef.current.to - camAnimRef.current.from) * eased;
         camYRef.current = cur;
         setCamY(cur);
-        if (t >= 1) camAnimRef.current = null;
+        if (t >= 1) {
+          camAnimRef.current = null;
+          hideBallRef.current = false;
+          respawnBlinkRef.current = 24;
+        }
       }
+
+      if (respawnBlinkRef.current > 0) respawnBlinkRef.current--;
 
       timeRef.current += 1;
       const rad = ballRadius * sizeRef.current;
@@ -495,7 +505,6 @@ export default function GameScreen({ navigation, route }: Props) {
       }
 
       if (hitLethal || hitTrap) {
-        spawnParticles(newX + rad, newY + rad, '#ff4444', 12);
         if (shieldRef.current && !hitTrap) {
           vel.current.x *= -0.5;
           vel.current.y *= -0.5;
@@ -506,8 +515,8 @@ export default function GameScreen({ navigation, route }: Props) {
           setBallPos({ x: pos.current.x, y: pos.current.y });
           dyingRef.current = 8;
         } else {
-          pos.current = { x: newX, y: newY };
-          setBallPos({ x: newX, y: newY });
+          spawnParticles(newX + rad, newY + rad, '#ff4444', 16);
+          hideBallRef.current = true;
           dyingRef.current = 50;
         }
         return;
@@ -557,7 +566,7 @@ export default function GameScreen({ navigation, route }: Props) {
         if (allCollected) {
           pos.current = { x: newX, y: newY };
           setBallPos({ x: newX, y: newY });
-          levelCompleteRef.current = 120;
+          levelCompleteRef.current = 60;
           spawnParticles(screenWidth / 2, screenHeight / 2, '#ffd700', 25);
           spawnParticles(screenWidth / 2, screenHeight / 2, '#ffffff', 15);
           return;
@@ -689,12 +698,16 @@ export default function GameScreen({ navigation, route }: Props) {
     navigation.reset({ index: 0, routes: [{ name: 'Menu' }] });
   };
 
+  const collectedCount = collected.filter(Boolean).length;
+  const totalCoins = levelData.collectibles.length;
+
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
       <View style={[styles.hud, { backgroundColor: bgColor + 'cc' }]}>
         <Text style={styles.hudText}>
           {'♥'.repeat(Math.max(0, lives))}
         </Text>
+        <Text style={styles.hudText}>💎 {collectedCount}/{totalCoins}</Text>
         <Text style={styles.hudText}>Score: {score}</Text>
         <Text style={styles.hudText}>
           ⏱ {String(Math.floor(levelTime / 3600)).padStart(2, '0')}:{String(Math.floor(levelTime / 60) % 60).padStart(2, '0')}
@@ -844,8 +857,9 @@ export default function GameScreen({ navigation, route }: Props) {
 
       {levelData.collectibles.map((c, i) => {
         if (collected[i]) return null;
+        const cs = cellSize / 2;
         return (
-          <GameSprite key={`coin-${i}`} sprite="coin" width={cellSize} height={cellSize} style={{ position: 'absolute', left: c.x - cellSize / 2, top: c.y - cellSize / 2 }} />
+          <GameSprite key={`coin-${i}`} sprite="coin" width={cs} height={cs} style={{ position: 'absolute', left: c.x - cs / 2, top: c.y - cs / 2 }} />
         );
       })}
 
@@ -877,30 +891,36 @@ export default function GameScreen({ navigation, route }: Props) {
         }} />
       ))}
 
-      <View style={{
-        position: 'absolute', left: ballPos.x, top: ballPos.y,
-        width: currentSize, height: currentSize,
-        alignItems: 'center', justifyContent: 'center',
-      }}>
-        {activeZone && (
+      {!hideBallRef.current && (() => {
+        const blink = respawnBlinkRef.current > 0 && (Math.floor(respawnBlinkRef.current / 4) % 2 === 0);
+        return (
           <View style={{
-            position: 'absolute',
-            width: currentSize + 20, height: currentSize + 20,
-            borderRadius: (currentSize + 20) / 2,
-            backgroundColor: ZONE_GLOW[activeZone] ?? 'transparent',
-          }} />
-        )}
-        {shieldActive && (
-          <View style={[styles.shield, {
-            width: currentSize + 12, height: currentSize + 12,
-            borderRadius: (currentSize + 12) / 2,
-          }]} />
-        )}
-        <GameSprite
-          sprite={ballMaterial === 'metal' ? 'ball_metal' : ballMaterial === 'plastic' ? 'ball_plastic' : 'ball_feather'}
-          width={currentSize} height={currentSize}
-        />
-      </View>
+            position: 'absolute', left: ballPos.x, top: ballPos.y,
+            width: currentSize, height: currentSize,
+            alignItems: 'center', justifyContent: 'center',
+            opacity: blink ? 0.25 : 1,
+          }}>
+            {activeZone && (
+              <View style={{
+                position: 'absolute',
+                width: currentSize + 20, height: currentSize + 20,
+                borderRadius: (currentSize + 20) / 2,
+                backgroundColor: ZONE_GLOW[activeZone] ?? 'transparent',
+              }} />
+            )}
+            {shieldActive && (
+              <View style={[styles.shield, {
+                width: currentSize + 12, height: currentSize + 12,
+                borderRadius: (currentSize + 12) / 2,
+              }]} />
+            )}
+            <GameSprite
+              sprite={ballMaterial === 'metal' ? 'ball_metal' : ballMaterial === 'plastic' ? 'ball_plastic' : 'ball_feather'}
+              width={currentSize} height={currentSize}
+            />
+          </View>
+        );
+      })()}
 
       {debugHitboxes && (
         <View style={styles.debugContainer} pointerEvents="none">

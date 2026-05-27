@@ -40,6 +40,7 @@
 | **Efectos de partículas** | ✅ |
 | **Transición suave entre niveles** | ✅ |
 | **Temas visuales por rango de niveles** | ✅ |
+| **Contador de monedas en HUD** | ✅ |
 
 ---
 
