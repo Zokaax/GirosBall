@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions, Vibration } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
@@ -43,6 +43,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const [ballMaterial, setBallMaterial] = useState<BallMaterial>('plastic');
   const [activeZone, setActiveZone] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
+  const [levelTime, setLevelTime] = useState(0);
+  const [startCountdown, setStartCountdown] = useState(0);
 
   const MATERIAL_MULT: Record<BallMaterial, Record<string, number>> = {
     metal: { wind: 0.3, magnetic: 1.5, ice: 0.3, mud: 1.2 },
@@ -94,6 +96,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const currentSize = currentRadius * 2;
 
   const pausedRef = useRef(false);
+  const levelTimeRef = useRef(0);
+  const startDelayRef = useRef(0);
 
   const pos = useRef({ x: centerX, y: centerY });
   const vel = useRef({ x: 0, y: 0 });
@@ -129,6 +133,11 @@ export default function GameScreen({ navigation, route }: Props) {
 
     pausedRef.current = false;
     setPaused(false);
+
+    levelTimeRef.current = 0;
+    setLevelTime(0);
+    startDelayRef.current = 60;
+    setStartCountdown(60);
 
     pos.current = { x: centerX, y: centerY };
     vel.current = { x: 0, y: 0 };
@@ -171,6 +180,7 @@ export default function GameScreen({ navigation, route }: Props) {
       if (shieldTimer.current) clearTimeout(shieldTimer.current);
       return;
     }
+    Vibration.vibrate(100);
     livesRef.current -= 1;
     setLives(livesRef.current);
     if (livesRef.current <= 0) {
@@ -188,6 +198,21 @@ export default function GameScreen({ navigation, route }: Props) {
       if (gameOverRef.current) return;
 
       if (pausedRef.current) return;
+
+      if (startDelayRef.current > 0) {
+        startDelayRef.current -= 1;
+        setStartCountdown(startDelayRef.current);
+        levelTimeRef.current += 1;
+        if (levelTimeRef.current % 3 === 0) {
+          setLevelTime(levelTimeRef.current);
+        }
+        return;
+      }
+
+      levelTimeRef.current += 1;
+      if (levelTimeRef.current % 3 === 0) {
+        setLevelTime(levelTimeRef.current);
+      }
 
       timeRef.current += 1;
       const rad = BALL_RADIUS * sizeRef.current;
@@ -453,22 +478,15 @@ export default function GameScreen({ navigation, route }: Props) {
         </Text>
         <Text style={styles.hudText}>Score: {score}</Text>
         <Text style={styles.hudText}>
+          ⏱ {String(Math.floor(levelTime / 3600)).padStart(2, '0')}:{String(Math.floor(levelTime / 60) % 60).padStart(2, '0')}
+        </Text>
+        <Text style={styles.hudText}>
           {ballMaterial === 'metal' ? '🔩' : ballMaterial === 'feather' ? '🪶' : '🧊'}{' '}
           {shieldActive ? '🛡 ' : ''}{sizeMultiplier !== 1 ? (sizeMultiplier > 1 ? '⬆' : '⬇') : ''}{' '}
           {activeZone ? (activeZone === 'wind' ? '💨' : activeZone === 'magnetic' ? '🧲' : activeZone === 'ice' ? '❄️' : '💩') : ''}{' '}
           Nv:{level}
         </Text>
       </View>
-
-      <TouchableOpacity
-        style={styles.pauseButton}
-        onPress={() => {
-          pausedRef.current = true;
-          setPaused(true);
-        }}
-      >
-        <Text style={styles.pauseButtonText}>⏸</Text>
-      </TouchableOpacity>
 
       {levelData.obstacles.map((obs, i) => (
         <View
@@ -703,6 +721,26 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
+      {startCountdown > 0 && !gameOver && !gameWon && (
+        <View style={styles.countdownOverlay}>
+          <Text style={styles.countdownText}>
+            {startCountdown > 40 ? '3' : startCountdown > 20 ? '2' : '1'}
+          </Text>
+        </View>
+      )}
+
+      {!gameOver && !gameWon && (
+        <TouchableOpacity
+          style={styles.pauseButton}
+          onPress={() => {
+            pausedRef.current = true;
+            setPaused(true);
+          }}
+        >
+          <Text style={styles.pauseButtonText}>⏸</Text>
+        </TouchableOpacity>
+      )}
+
       {showNameInput && (
         <View style={styles.overlay}>
           <View style={styles.nameInputBox}>
@@ -743,7 +781,7 @@ const styles = StyleSheet.create({
   },
   hudText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
   },
   ball: {
@@ -848,19 +886,33 @@ const styles = StyleSheet.create({
   },
   pauseButton: {
     position: 'absolute',
-    top: 50,
-    right: 16,
+    bottom: 40,
+    right: 24,
     zIndex: 100,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   pauseButtonText: {
     fontSize: 22,
     color: '#ffffff',
+  },
+  countdownOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+  },
+  countdownText: {
+    fontSize: 120,
+    fontWeight: 'bold',
+    color: 'rgba(255,255,255,0.3)',
   },
   pauseBox: {
     backgroundColor: '#1a1a2e',
