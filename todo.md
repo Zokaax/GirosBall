@@ -58,7 +58,7 @@
 
 ### Prioridad baja — Pulido visual y audio
 - [x] **Efectos de partículas**: Al recolectar monedas, al morir, al pasar de nivel
-- [x] **Animaciones de transición**: Fade in al cargar nivel
+- [x] **Animaciones de transición**: Fade in al cargar nivel, animación de muerte, fuegos artificiales al completar
 - [x] **Temas visuales**: Color de fondo variable por rango de niveles
 - [ ] **Screen shake**: Animación de vibración de pantalla al chocar
 - [ ] **Bola con iluminación/brillo**: Degradado radial, sombra

@@ -127,6 +127,11 @@ export default function GameScreen({ navigation, route }: Props) {
     particlesRef.current = [...particlesRef.current, ...parts];
   }, []);
 
+  const dyingRef = useRef(0);
+  const camAnimRef = useRef<{ from: number; to: number; progress: number; duration: number } | null>(null);
+  const levelCompleteRef = useRef(0);
+  const fireworkColors = ['#ff4444', '#44ff44', '#44aaff', '#ffff44', '#ff44ff', '#ff8844'];
+
   const levelData = useMemo(
     () => getLevel(level, screenWidth, screenHeight),
     [level, screenWidth, screenHeight],
@@ -177,6 +182,11 @@ export default function GameScreen({ navigation, route }: Props) {
     iceStateRef.current = {};
     setBrokenWalls({});
     setIceBrokenState({});
+
+    dyingRef.current = 0;
+    camAnimRef.current = null;
+    levelCompleteRef.current = 0;
+    particlesRef.current = [];
 
     fadeAnim.setValue(1);
     Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start();
@@ -263,6 +273,46 @@ export default function GameScreen({ navigation, route }: Props) {
         .map(p => ({ ...p, x: p.x + p.vx * 0.016, y: p.y + p.vy * 0.016, life: p.life - 1 }))
         .filter(p => p.life > 0);
 
+      const lvl = getLevel(levelRef.current, screenWidth, screenHeight);
+
+      if (dyingRef.current > 0) {
+        dyingRef.current--;
+        if (dyingRef.current === 0) {
+          const wasShielded = shieldRef.current;
+          die();
+          if (!wasShielded && !gameOverRef.current) {
+            const sc = spawnY + ballRadius;
+            const spawnCY = Math.max(0, Math.min(lvl.worldHeight - screenHeight, sc - screenHeight / 2));
+            camAnimRef.current = { from: camYRef.current, to: spawnCY, progress: 0, duration: 25 };
+          }
+        }
+        return;
+      }
+
+      if (levelCompleteRef.current > 0) {
+        levelCompleteRef.current--;
+        if (levelCompleteRef.current % 15 === 0) {
+          const fx = Math.random() * screenWidth;
+          const fy = Math.random() * screenHeight * 0.4;
+          const c = fireworkColors[Math.floor(Math.random() * fireworkColors.length)];
+          spawnParticles(fx, fy, c, 15);
+        }
+        if (levelCompleteRef.current === 0) {
+          nextLevel();
+        }
+        return;
+      }
+
+      if (camAnimRef.current) {
+        camAnimRef.current.progress++;
+        const t = Math.min(camAnimRef.current.progress / camAnimRef.current.duration, 1);
+        const eased = t * t * (3 - 2 * t);
+        const cur = camAnimRef.current.from + (camAnimRef.current.to - camAnimRef.current.from) * eased;
+        camYRef.current = cur;
+        setCamY(cur);
+        if (t >= 1) camAnimRef.current = null;
+      }
+
       timeRef.current += 1;
       const rad = ballRadius * sizeRef.current;
       const sz = rad * 2;
@@ -275,8 +325,6 @@ export default function GameScreen({ navigation, route }: Props) {
 
       vel.current.x *= phys.friction;
       vel.current.y *= phys.friction;
-
-      const lvl = getLevel(levelRef.current, screenWidth, screenHeight);
 
       let newX = pos.current.x + vel.current.x * 0.016;
       let newY = pos.current.y + vel.current.y * 0.016;
@@ -299,11 +347,13 @@ export default function GameScreen({ navigation, route }: Props) {
         vel.current.y *= -0.5;
       }
 
-      // Camera follows ball
-      const ballCenterY = newY + rad;
-      const nextCamY = Math.max(0, Math.min(lvl.worldHeight - screenHeight, ballCenterY - screenHeight / 2));
-      camYRef.current = nextCamY;
-      setCamY(nextCamY);
+      // Camera follows ball (skip if respawn animation is active)
+      if (!camAnimRef.current) {
+        const ballCenterY = newY + rad;
+        const nextCamY = Math.max(0, Math.min(lvl.worldHeight - screenHeight, ballCenterY - screenHeight / 2));
+        camYRef.current = nextCamY;
+        setCamY(nextCamY);
+      }
 
       const bx = newX + rad;
       const by = newY + rad;
@@ -446,8 +496,6 @@ export default function GameScreen({ navigation, route }: Props) {
 
       if (hitLethal || hitTrap) {
         spawnParticles(newX + rad, newY + rad, '#ff4444', 12);
-        pos.current = { x: newX, y: newY };
-        setBallPos({ x: newX, y: newY });
         if (shieldRef.current && !hitTrap) {
           vel.current.x *= -0.5;
           vel.current.y *= -0.5;
@@ -456,8 +504,12 @@ export default function GameScreen({ navigation, route }: Props) {
           pos.current.x = Math.max(0, Math.min(screenWidth - rad * 2, pushX));
           pos.current.y = Math.max(HUD_HEIGHT, Math.min(screenHeight - rad * 2, pushY));
           setBallPos({ x: pos.current.x, y: pos.current.y });
+          dyingRef.current = 8;
+        } else {
+          pos.current = { x: newX, y: newY };
+          setBallPos({ x: newX, y: newY });
+          dyingRef.current = 50;
         }
-        die();
         return;
       }
 
@@ -503,11 +555,11 @@ export default function GameScreen({ navigation, route }: Props) {
 
         const allCollected = collectedCopy.every(Boolean);
         if (allCollected) {
-          spawnParticles(screenWidth / 2, screenHeight / 2, '#ffd700', 20);
-          spawnParticles(screenWidth / 2, screenHeight / 2, '#ffffff', 12);
           pos.current = { x: newX, y: newY };
           setBallPos({ x: newX, y: newY });
-          nextLevel();
+          levelCompleteRef.current = 120;
+          spawnParticles(screenWidth / 2, screenHeight / 2, '#ffd700', 25);
+          spawnParticles(screenWidth / 2, screenHeight / 2, '#ffffff', 15);
           return;
       }
       }
