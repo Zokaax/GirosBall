@@ -566,16 +566,13 @@ export default function GameScreen({ navigation, route }: Props) {
           const phase = Math.sin(timeRef.current * 0.03 + trap.phase * Math.PI * 2);
           if (phase < 0) return null;
         }
-        const isSpike = trap.type === 'spike';
-        const tw = isSpike ? trap.width / 2 : trap.width;
-        const th = trap.height / 2;
         return (
           <GameSprite
             key={`trap-${i}`}
-            sprite={isSpike ? 'trap_spike' : 'trap_disappearing'}
-            width={tw} height={th}
+            sprite={trap.type === 'spike' ? 'trap_spike' : 'trap_disappearing'}
+            width={trap.width} height={trap.height}
             resizeMode="stretch"
-            style={{ position: 'absolute', left: trap.x + (trap.width - tw) / 2, top: trap.y + (trap.height - th) / 2 }}
+            style={{ position: 'absolute', left: trap.x, top: trap.y }}
           />
         );
       })}
