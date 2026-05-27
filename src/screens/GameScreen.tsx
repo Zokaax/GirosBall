@@ -42,6 +42,7 @@ export default function GameScreen({ navigation, route }: Props) {
   const [collectedPowerUps, setCollectedPowerUps] = useState<boolean[]>([]);
   const [ballMaterial, setBallMaterial] = useState<BallMaterial>('plastic');
   const [activeZone, setActiveZone] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
 
   const MATERIAL_MULT: Record<BallMaterial, Record<string, number>> = {
     metal: { wind: 0.3, magnetic: 1.5, ice: 0.3, mud: 1.2 },
@@ -92,6 +93,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const currentRadius = BALL_RADIUS * sizeRef.current;
   const currentSize = currentRadius * 2;
 
+  const pausedRef = useRef(false);
+
   const pos = useRef({ x: centerX, y: centerY });
   const vel = useRef({ x: 0, y: 0 });
   const livesRef = useRef(INITIAL_LIVES);
@@ -123,6 +126,9 @@ export default function GameScreen({ navigation, route }: Props) {
     sizeRef.current = 1;
     setShieldActive(false);
     setSizeMultiplier(1);
+
+    pausedRef.current = false;
+    setPaused(false);
 
     pos.current = { x: centerX, y: centerY };
     vel.current = { x: 0, y: 0 };
@@ -180,6 +186,8 @@ export default function GameScreen({ navigation, route }: Props) {
 
     const sub = Accelerometer.addListener(({ x: ax, y: ay }) => {
       if (gameOverRef.current) return;
+
+      if (pausedRef.current) return;
 
       timeRef.current += 1;
       const rad = BALL_RADIUS * sizeRef.current;
@@ -423,6 +431,8 @@ export default function GameScreen({ navigation, route }: Props) {
     nameSubmittedRef.current = false;
     setShowNameInput(false);
     setPlayerName('');
+    pausedRef.current = false;
+    setPaused(false);
     shieldRef.current = false;
     sizeRef.current = 1;
     setShieldActive(false);
@@ -449,6 +459,16 @@ export default function GameScreen({ navigation, route }: Props) {
           Nv:{level}
         </Text>
       </View>
+
+      <TouchableOpacity
+        style={styles.pauseButton}
+        onPress={() => {
+          pausedRef.current = true;
+          setPaused(true);
+        }}
+      >
+        <Text style={styles.pauseButtonText}>⏸</Text>
+      </TouchableOpacity>
 
       {levelData.obstacles.map((obs, i) => (
         <View
@@ -656,6 +676,33 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
+      {paused && !gameOver && !gameWon && (
+        <View style={styles.overlay}>
+          <View style={styles.pauseBox}>
+            <Text style={styles.pauseTitle}>PAUSA</Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => {
+                pausedRef.current = false;
+                setPaused(false);
+              }}
+            >
+              <Text style={styles.buttonText}>Reanudar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSecondary]}
+              onPress={() => {
+                pausedRef.current = false;
+                setPaused(false);
+                handleVolverMenu();
+              }}
+            >
+              <Text style={styles.buttonText}>Salir al Menú</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {showNameInput && (
         <View style={styles.overlay}>
           <View style={styles.nameInputBox}>
@@ -798,6 +845,37 @@ const styles = StyleSheet.create({
   nameInputScore: {
     fontSize: 20,
     color: '#ffffff',
+  },
+  pauseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    zIndex: 100,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pauseButtonText: {
+    fontSize: 22,
+    color: '#ffffff',
+  },
+  pauseBox: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    gap: 16,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  pauseTitle: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
   },
   nameInput: {
     backgroundColor: '#16213e',
