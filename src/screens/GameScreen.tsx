@@ -19,6 +19,10 @@ const HUD_HEIGHT = 90;
 const INITIAL_LIVES = 5;
 const TOTAL_LEVELS = 20;
 const POWERUP_DURATION = 6000;
+const TOP_OFFSET = 100;
+const CELL_H = 48;
+const CELL_COLS = 10;
+const SPAWN_ROW = 2;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Game'>;
 
@@ -26,9 +30,10 @@ export default function GameScreen({ navigation, route }: Props) {
   const startLevel = route.params?.startLevel ?? 1;
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const centerX = screenWidth / 2 - BALL_SIZE / 2;
-  const centerY = screenHeight / 2 - BALL_SIZE / 2;
+  const spawnY = TOP_OFFSET + SPAWN_ROW * CELL_H - BALL_RADIUS;
 
-  const [ballPos, setBallPos] = useState({ x: centerX, y: centerY });
+  const [ballPos, setBallPos] = useState({ x: centerX, y: spawnY });
+  const [camY, setCamY] = useState(0);
   const [lives, setLives] = useState(INITIAL_LIVES);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(startLevel);
@@ -91,13 +96,14 @@ export default function GameScreen({ navigation, route }: Props) {
   const shieldStartRef = useRef(0);
   const sizeStartRef = useRef(0);
 
-  const pos = useRef({ x: centerX, y: centerY });
+  const pos = useRef({ x: centerX, y: spawnY });
   const vel = useRef({ x: 0, y: 0 });
   const livesRef = useRef(INITIAL_LIVES);
   const gameOverRef = useRef(false);
   const levelRef = useRef(startLevel);
   const scoreRef = useRef(0);
   const timeRef = useRef(0);
+  const camYRef = useRef(0);
 
   const levelData = useMemo(
     () => getLevel(level, screenWidth, screenHeight),
@@ -135,25 +141,25 @@ export default function GameScreen({ navigation, route }: Props) {
     startDelayRef.current = 60;
     setStartCountdown(60);
 
-    pos.current = { x: centerX, y: centerY };
+    pos.current = { x: centerX, y: spawnY };
     vel.current = { x: 0, y: 0 };
-    setBallPos({ x: centerX, y: centerY });
+    setBallPos({ x: centerX, y: spawnY });
     timeRef.current = 0;
     brokenWallsRef.current = {};
     iceStateRef.current = {};
     setBrokenWalls({});
     setIceBrokenState({});
-  }, [centerX, centerY, screenWidth, screenHeight]);
+  }, [centerX, spawnY, screenWidth, screenHeight]);
 
   useEffect(() => {
     initLevel();
   }, [level, initLevel]);
 
   const resetBall = useCallback(() => {
-    pos.current = { x: centerX, y: centerY };
+    pos.current = { x: centerX, y: spawnY };
     vel.current = { x: 0, y: 0 };
-    setBallPos({ x: centerX, y: centerY });
-  }, [centerX, centerY]);
+    setBallPos({ x: centerX, y: spawnY });
+  }, [centerX, spawnY]);
 
   const nextLevel = useCallback(() => {
     const timeBonus = Math.max(0, Math.floor((1800 - levelTimeRef.current) / 6) * 10);
@@ -235,6 +241,8 @@ export default function GameScreen({ navigation, route }: Props) {
       vel.current.x *= phys.friction;
       vel.current.y *= phys.friction;
 
+      const lvl = getLevel(levelRef.current, screenWidth, screenHeight);
+
       let newX = pos.current.x + vel.current.x * 0.016;
       let newY = pos.current.y + vel.current.y * 0.016;
 
@@ -249,16 +257,23 @@ export default function GameScreen({ navigation, route }: Props) {
       if (newY < HUD_HEIGHT) {
         newY = HUD_HEIGHT;
         vel.current.y *= -0.5;
-      } else if (newY > screenHeight - sz) {
-        newY = screenHeight - sz;
+      }
+      const worldBottom = lvl.worldHeight;
+      if (newY + sz > worldBottom) {
+        newY = worldBottom - sz;
         vel.current.y *= -0.5;
       }
+
+      // Camera follows ball
+      const ballCenterY = newY + rad;
+      const nextCamY = Math.max(0, Math.min(lvl.worldHeight - screenHeight, ballCenterY - screenHeight / 2));
+      camYRef.current = nextCamY;
+      setCamY(nextCamY);
 
       const bx = newX + rad;
       const by = newY + rad;
 
       const mult = MATERIAL_MULT[mat];
-      const lvl = getLevel(levelRef.current, screenWidth, screenHeight);
       let foundZone: string | null = null;
 
       for (const zone of lvl.zones) {
@@ -616,7 +631,8 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      {levelData.obstacles.map((obs, i) => {
+      <View style={[styles.gameWorld, { width: screenWidth, height: screenHeight, transform: [{ translateY: -camY }] }]}>
+        {levelData.obstacles.map((obs, i) => {
         const key = `obs-${i}`;
         if (obs.type === 'rotting_floor') {
           return (
@@ -830,6 +846,8 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
+      </View>
+
       {gameOver && (
         <View style={styles.overlay}>
           <View style={styles.gameOverBox}>
@@ -950,6 +968,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
+  },
+  gameWorld: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
   },
   hud: {
     flexDirection: 'row',

@@ -60,7 +60,15 @@ export type LevelData = {
   powerUps: PowerUp[];
   zones: Zone[];
   traps: Trap[];
+  worldHeight: number;
 };
+
+const CELL_COLS = 10;
+const CELL_H = 48;
+const COL_RADIUS = 14;
+const SPAWN_ROW = 2;
+const SPAWN_COL_START = 3;
+const SPAWN_COL_END = 6;
 
 function seededRandom(seed: number) {
   let s = seed;
@@ -70,225 +78,183 @@ function seededRandom(seed: number) {
   };
 }
 
-function isInSafeZone(x: number, y: number, w: number, h: number, cx: number, cy: number): boolean {
-  return (
-    x + w > cx - SPAWN_SAFE_RADIUS &&
-    x < cx + SPAWN_SAFE_RADIUS &&
-    y + h > cy - SPAWN_SAFE_RADIUS &&
-    y < cy + SPAWN_SAFE_RADIUS
-  );
-}
-
-function rectsOverlap(
-  x1: number, y1: number, w1: number, h1: number,
-  x2: number, y2: number, w2: number, h2: number,
-): boolean {
-  return x1 + w1 > x2 && x1 < x2 + w2 && y1 + h1 > y2 && y1 < y2 + h2;
-}
-
-const CELL = 15;
-const BALL_RADIUS = 20;
-
-function areCollectiblesReachable(
-  obstacles: Obstacle[],
-  movingObstacles: MovingObstacle[],
-  traps: Trap[],
-  collectibles: Collectible[],
-  cx: number, cy: number,
-  screenW: number, screenH: number,
-): boolean {
-  const cols = Math.ceil(screenW / CELL);
-  const rows = Math.ceil((screenH - TOP_OFFSET) / CELL);
-  const blocked: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
-
-  const markBlocked = (rx: number, ry: number, rw: number, rh: number) => {
-    const minC = Math.max(0, Math.floor((rx - BALL_RADIUS) / CELL));
-    const maxC = Math.min(cols - 1, Math.ceil((rx + rw + BALL_RADIUS) / CELL));
-    const minR = Math.max(0, Math.floor((ry - BALL_RADIUS - TOP_OFFSET) / CELL));
-    const maxR = Math.min(rows - 1, Math.ceil((ry + rh + BALL_RADIUS - TOP_OFFSET) / CELL));
-    for (let r = minR; r <= maxR; r++) {
-      for (let c = minC; c <= maxC; c++) {
-        blocked[r][c] = true;
-      }
-    }
-  };
-
-  for (const o of obstacles) markBlocked(o.x, o.y, o.width, o.height);
-  for (const m of movingObstacles) markBlocked(m.x, m.y, m.width, m.height);
-  for (const t of traps) markBlocked(t.x, t.y, t.width, t.height);
-
-  const spawnC = Math.floor(cx / CELL);
-  const spawnR = Math.floor((cy - TOP_OFFSET) / CELL);
-  if (spawnR < 0 || spawnR >= rows || spawnC < 0 || spawnC >= cols) return true;
-
-  const visited: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
-  const queue: [number, number][] = [[spawnC, spawnR]];
-  visited[spawnR][spawnC] = true;
-  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-
-  for (let qi = 0; qi < queue.length; qi++) {
-    const [c, r] = queue[qi];
-    for (const [dc, dr] of dirs) {
-      const nc = c + dc;
-      const nr = r + dr;
-      if (nc >= 0 && nc < cols && nr >= 0 && nr < rows && !blocked[nr][nc] && !visited[nr][nc]) {
-        visited[nr][nc] = true;
-        queue.push([nc, nr]);
-      }
-    }
-  }
-
-  for (const col of collectibles) {
-    const cc = Math.floor(col.x / CELL);
-    const cr = Math.floor((col.y - TOP_OFFSET) / CELL);
-    if (cr >= 0 && cr < rows && cc >= 0 && cc < cols && !visited[cr][cc]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 function generateLevel(levelNum: number, screenW: number, screenH: number, seedOffset = 0): LevelData {
   const rng = seededRandom(levelNum * 7919 + 42 + seedOffset * 9973);
-  const playH = screenH - TOP_OFFSET - MARGIN;
-  const cx = screenW / 2;
-  const cy = screenH / 2;
-  const COL_RADIUS = 14;
-  const COL_PAD = 8;
+  const CELL_W = screenW / CELL_COLS;
+  const totalRows = 10 + levelNum * 3;
+  const worldHeight = TOP_OFFSET + MARGIN + totalRows * CELL_H;
+  const grid: boolean[][] = Array.from({ length: totalRows }, () => Array(CELL_COLS).fill(false));
 
-  const numCollectibles = Math.min(3 + levelNum, 15);
-  const numObstacles = Math.max(0, Math.floor((levelNum - 1) * 0.6));
-  const numMoving = Math.max(0, Math.floor((levelNum - 4) / 3));
+  const toX = (col: number, w = 1) => col * CELL_W;
+  const toY = (row: number, h = 1) => TOP_OFFSET + row * CELL_H;
+  const toW = (n: number) => n * CELL_W;
+  const toH = (n: number) => n * CELL_H;
+
+  const occupy = (col: number, row: number, w: number, h: number) => {
+    for (let r = row; r < Math.min(row + h, totalRows); r++)
+      for (let c = col; c < Math.min(col + w, CELL_COLS); c++)
+        grid[r][c] = true;
+  };
+
+  const isFree = (col: number, row: number, w: number, h: number) => {
+    if (col < 0 || row < 0 || col + w > CELL_COLS || row + h > totalRows) return false;
+    for (let r = row; r < row + h; r++)
+      for (let c = col; c < col + w; c++)
+        if (grid[r][c]) return false;
+    return true;
+  };
+
+  const findFree = (w: number, h: number, maxTries = 50): { col: number; row: number } | null => {
+    const maxCol = CELL_COLS - w;
+    const maxRow = totalRows - h;
+    for (let t = 0; t < maxTries; t++) {
+      const col = Math.floor(rng() * maxCol);
+      const row = Math.floor(rng() * maxRow);
+      if (isFree(col, row, w, h)) return { col, row };
+    }
+    return null;
+  };
+
+  // Reserve spawn area
+  for (let r = 0; r <= SPAWN_ROW + 1; r++)
+    for (let c = SPAWN_COL_START; c <= SPAWN_COL_END; c++)
+      if (r < totalRows && c < CELL_COLS) grid[r][c] = true;
 
   const allPlaced: { x: number; y: number; w: number; h: number }[] = [];
 
+  const place = (x: number, y: number, w: number, h: number) => {
+    allPlaced.push({ x, y, w, h });
+  };
+
+  const colsFor = (min: number, max: number) => Math.min(max, Math.max(min, 1 + Math.floor(rng() * (max - min + 1))));
+  const rowsFor = (min: number, max: number) => Math.min(max, Math.max(min, 1 + Math.floor(rng() * (max - min + 1))));
+
+  // Obstacles
+  const numObstacles = Math.max(0, Math.floor((levelNum - 1) * 0.6));
   const obstacles: Obstacle[] = [];
   const obstacleTypes: ObstacleType[] = ['wall', 'rotting_floor', 'fragile_wall', 'thin_ice'];
   for (let i = 0; i < numObstacles; i++) {
-    let tries = 0;
-    let ox: number, oy: number, ow: number, oh: number;
-    do {
-      ox = MARGIN + rng() * (screenW - 2 * MARGIN - 60);
-      oy = TOP_OFFSET + rng() * (playH - MARGIN - 50);
-      ow = 30 + rng() * 50;
-      oh = 15 + rng() * 25;
-      tries++;
-    } while (isInSafeZone(ox, oy, ow, oh, cx, cy) && tries < 20);
+    const cw = colsFor(1, 3);
+    const ch = rowsFor(1, 2);
+    const pos = findFree(cw, ch);
+    if (!pos) continue;
+    occupy(pos.col, pos.row, cw, ch);
     const ot = levelNum >= 4 ? obstacleTypes[Math.floor(rng() * obstacleTypes.length)] : 'wall';
-    obstacles.push({ x: ox, y: oy, width: ow, height: oh, type: ot });
-    allPlaced.push({ x: ox, y: oy, w: ow, h: oh });
+    obstacles.push({ x: toX(pos.col), y: toY(pos.row), width: toW(cw), height: toH(ch), type: ot });
+    place(toX(pos.col), toY(pos.row), toW(cw), toH(ch));
   }
 
+  // Moving obstacles
+  const numMoving = Math.max(0, Math.floor((levelNum - 4) / 3));
   const movingObstacles: MovingObstacle[] = [];
   for (let i = 0; i < numMoving; i++) {
-    let tries = 0;
-    let mx: number, my: number;
-    do {
-      mx = MARGIN + rng() * (screenW - 2 * MARGIN - 50);
-      my = TOP_OFFSET + rng() * (playH - MARGIN - 30);
-      tries++;
-    } while (isInSafeZone(mx, my, 50, 18, cx, cy) && tries < 20);
+    const pos = findFree(3, 1);
+    if (!pos) continue;
+    occupy(pos.col, pos.row, 3, 1);
     movingObstacles.push({
-      x: mx, y: my,
-      width: 50, height: 18,
+      x: toX(pos.col), y: toY(pos.row),
+      width: toW(3), height: toH(1),
       range: 30 + rng() * 90,
       speed: 0.4 + rng() * 0.8,
       axis: rng() > 0.5 ? 'x' : 'y',
     });
-    allPlaced.push({ x: mx, y: my, w: 50, h: 18 });
+    place(toX(pos.col), toY(pos.row), toW(3), toH(1));
   }
 
+  // Collectibles
+  const numCollectibles = Math.min(3 + levelNum, 15);
   const collectibles: Collectible[] = [];
   for (let i = 0; i < numCollectibles; i++) {
-    let tries = 0;
-    let colX: number, colY: number;
-    do {
-      colX = MARGIN + rng() * (screenW - 2 * MARGIN);
-      colY = TOP_OFFSET + rng() * (playH - MARGIN);
-      tries++;
-    } while (
-      tries < 30 &&
-      allPlaced.some((p) =>
-        rectsOverlap(colX - COL_RADIUS, colY - COL_RADIUS, COL_RADIUS * 2, COL_RADIUS * 2, p.x, p.y, p.w, p.h),
-      )
-    );
-    collectibles.push({ x: colX, y: colY, radius: COL_RADIUS });
-    allPlaced.push({ x: colX - COL_RADIUS, y: colY - COL_RADIUS, w: COL_RADIUS * 2 + COL_PAD, h: COL_RADIUS * 2 + COL_PAD });
+    const pos = findFree(1, 1, 30);
+    if (!pos) continue;
+    occupy(pos.col, pos.row, 1, 1);
+    const cx = toX(pos.col) + CELL_W / 2;
+    const cy = toY(pos.row) + CELL_H / 2;
+    collectibles.push({ x: cx, y: cy, radius: COL_RADIUS });
+    place(cx - COL_RADIUS, cy - COL_RADIUS, COL_RADIUS * 2 + 4, COL_RADIUS * 2 + 4);
   }
 
+  // Power-ups
   const numPowerUps = levelNum >= 3 ? (levelNum >= 8 ? (levelNum >= 14 ? 4 : 2) : 1) : 0;
   const powerUpTypes: PowerUpType[] = ['shield', 'big', 'small', 'metal', 'plastic', 'feather'];
   const powerUps: PowerUp[] = [];
   for (let i = 0; i < numPowerUps; i++) {
-    let tries = 0;
-    let puX: number, puY: number;
-    do {
-      puX = MARGIN + rng() * (screenW - 2 * MARGIN);
-      puY = TOP_OFFSET + rng() * (playH - MARGIN);
-      tries++;
-    } while (
-      tries < 30 &&
-      allPlaced.some((p) =>
-        rectsOverlap(puX - 18, puY - 18, 36, 36, p.x, p.y, p.w, p.h),
-      )
-    );
+    const pos = findFree(1, 1, 30);
+    if (!pos) continue;
+    occupy(pos.col, pos.row, 1, 1);
     const type = powerUpTypes[Math.floor(rng() * powerUpTypes.length)];
-    powerUps.push({ x: puX, y: puY, radius: 18, type });
-    allPlaced.push({ x: puX - 18, y: puY - 18, w: 36, h: 36 });
+    const px = toX(pos.col) + CELL_W / 2;
+    const py = toY(pos.row) + CELL_H / 2;
+    powerUps.push({ x: px, y: py, radius: 18, type });
+    place(px - 18, py - 18, 36, 36);
   }
 
+  // Zones
   const numZones = levelNum >= 5 ? (levelNum >= 10 ? (levelNum >= 15 ? 3 : 2) : 1) : 0;
   const zoneTypes: ZoneType[] = ['wind', 'magnetic', 'ice', 'mud'];
   const zones: Zone[] = [];
   for (let i = 0; i < numZones; i++) {
     const zt = zoneTypes[Math.floor(rng() * zoneTypes.length)];
-    const zW = 60 + rng() * 80;
-    const zH = 60 + rng() * 80;
-    let tries = 0;
-    let zx: number, zy: number;
-    let placed = false;
-    do {
-      zx = MARGIN + rng() * (screenW - MARGIN - zW);
-      zy = TOP_OFFSET + rng() * (playH - zH);
-      tries++;
-      if (
-        !isInSafeZone(zx, zy, zW, zH, cx, cy) &&
-        !allPlaced.some((p) => rectsOverlap(zx - 5, zy - 5, zW + 10, zH + 10, p.x, p.y, p.w, p.h))
-      ) {
-        placed = true;
-        break;
-      }
-    } while (tries < 50);
-    if (!placed) continue;
+    const cw = colsFor(2, 4);
+    const ch = rowsFor(2, 4);
+    const pos = findFree(cw + 1, ch + 1, 30);
+    if (!pos) continue;
+    // zones don't occupy cells (they overlap)
+    const zx = toX(pos.col);
+    const zy = toY(pos.row);
+    const zW = toW(cw);
+    const zH = toH(ch);
+    const zDx = pos.col + (cw + 1) / 2;
+    const zDy = pos.row + (ch + 1) / 2;
+    const spawnCx = screenW / 2;
+    const spawnCy = TOP_OFFSET + SPAWN_ROW * CELL_H + CELL_H;
+    if (Math.abs(zDx * CELL_W - spawnCx) < 80 && Math.abs(zDy * CELL_H - spawnCy) < 80) continue;
     const angle = rng() * Math.PI * 2;
     zones.push({ x: zx, y: zy, width: zW, height: zH, type: zt, dx: Math.cos(angle), dy: Math.sin(angle) });
   }
 
+  // Traps: spikes (1x1) and disappearing (2x1)
   const numSpikes = levelNum >= 3 ? Math.floor((levelNum - 2) / 3) : 0;
   const numDisappearing = levelNum >= 6 ? Math.floor(levelNum / 5) : 0;
   const traps: Trap[] = [];
   for (let i = 0; i < numSpikes; i++) {
-    let tries = 0;
-    let sx: number, sy: number;
-    do {
-      sx = MARGIN + rng() * (screenW - 2 * MARGIN - 30);
-      sy = TOP_OFFSET + rng() * (playH - MARGIN - 30);
-      tries++;
-    } while (isInSafeZone(sx, sy, 24, 24, cx, cy) && tries < 20);
-    traps.push({ x: sx, y: sy, width: 24, height: 24, type: 'spike', phase: rng() });
+    const pos = findFree(1, 1, 30);
+    if (!pos || pos.row <= SPAWN_ROW + 1) continue;
+    occupy(pos.col, pos.row, 1, 1);
+    traps.push({ x: toX(pos.col), y: toY(pos.row), width: toW(1), height: toH(1), type: 'spike', phase: rng() });
+    place(toX(pos.col), toY(pos.row), toW(1), toH(1));
   }
   for (let i = 0; i < numDisappearing; i++) {
-    let tries = 0;
-    let dx: number, dy: number;
-    do {
-      dx = MARGIN + rng() * (screenW - 2 * MARGIN - 50);
-      dy = TOP_OFFSET + rng() * (playH - MARGIN - 18);
-      tries++;
-    } while (isInSafeZone(dx, dy, 50, 18, cx, cy) && tries < 20);
-    traps.push({ x: dx, y: dy, width: 50, height: 18, type: 'disappearing', phase: rng() });
+    const pos = findFree(2, 1, 30);
+    if (!pos) continue;
+    occupy(pos.col, pos.row, 2, 1);
+    traps.push({ x: toX(pos.col), y: toY(pos.row), width: toW(2), height: toH(1), type: 'disappearing', phase: rng() });
+    place(toX(pos.col), toY(pos.row), toW(2), toH(1));
   }
 
-  return { id: levelNum, obstacles, movingObstacles, collectibles, powerUps, zones, traps };
+  return { id: levelNum, obstacles, movingObstacles, collectibles, powerUps, zones, traps, worldHeight };
+}
+
+function bfsReachable(grid: boolean[][], totalRows: number, totalCols: number, targets: { r: number; c: number }[]): boolean {
+  const spawnRow = SPAWN_ROW + 1;
+  const spawnCol = Math.floor((SPAWN_COL_START + SPAWN_COL_END) / 2);
+  if (spawnRow >= totalRows || spawnCol >= totalCols) return true;
+  const visited: boolean[][] = Array.from({ length: totalRows }, () => Array(totalCols).fill(false));
+  const queue: [number, number][] = [[spawnCol, spawnRow]];
+  visited[spawnRow][spawnCol] = true;
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let qi = 0; qi < queue.length; qi++) {
+    const [c, r] = queue[qi];
+    for (const [dc, dr] of dirs) {
+      const nc = c + dc;
+      const nr = r + dr;
+      if (nc >= 0 && nc < totalCols && nr >= 0 && nr < totalRows && !grid[nr][nc] && !visited[nr][nc]) {
+        visited[nr][nc] = true;
+        queue.push([nc, nr]);
+      }
+    }
+  }
+  return targets.every(({ r, c }) => r < 0 || r >= totalRows || c < 0 || c >= totalCols || visited[r][c]);
 }
 
 const cachedLevels = new Map<string, LevelData>();
@@ -296,14 +262,44 @@ const cachedLevels = new Map<string, LevelData>();
 export function getLevel(levelNum: number, screenW: number, screenH: number): LevelData {
   const key = `${levelNum}-${Math.round(screenW)}-${Math.round(screenH)}`;
   if (!cachedLevels.has(key)) {
-    const cx = screenW / 2;
-    const cy = screenH / 2;
     let data: LevelData;
     for (let attempt = 0; attempt < 10; attempt++) {
       data = generateLevel(levelNum, screenW, screenH, attempt);
-      if (areCollectiblesReachable(data.obstacles, data.movingObstacles, data.traps, data.collectibles, cx, cy, screenW, screenH)) {
-        break;
+      const CELL_W = screenW / CELL_COLS;
+      const totalRows = 10 + levelNum * 3;
+      const targets: { r: number; c: number }[] = data.collectibles.map((c) => ({
+        r: Math.floor((c.y - TOP_OFFSET) / CELL_H),
+        c: Math.floor(c.x / CELL_W),
+      }));
+      const grid: boolean[][] = Array.from({ length: totalRows }, () => Array(CELL_COLS).fill(false));
+      for (const o of data.obstacles) {
+        const cr = Math.floor((o.y - TOP_OFFSET) / CELL_H);
+        const cc = Math.floor(o.x / CELL_W);
+        const cw = Math.max(1, Math.round(o.width / CELL_W));
+        const ch = Math.max(1, Math.round(o.height / CELL_H));
+        for (let r = cr; r < Math.min(cr + ch, totalRows); r++)
+          for (let c = cc; c < Math.min(cc + cw, CELL_COLS); c++)
+            grid[r][c] = true;
       }
+      for (const m of data.movingObstacles) {
+        const mr = Math.floor((m.y - TOP_OFFSET) / CELL_H);
+        const mc = Math.floor(m.x / CELL_W);
+        const mw = Math.max(1, Math.round(m.width / CELL_W));
+        const mh = Math.max(1, Math.round(m.height / CELL_H));
+        for (let r = mr; r < Math.min(mr + mh, totalRows); r++)
+          for (let c = mc; c < Math.min(mc + mw, CELL_COLS); c++)
+            grid[r][c] = true;
+      }
+      for (const t of data.traps) {
+        const tr = Math.floor((t.y - TOP_OFFSET) / CELL_H);
+        const tc = Math.floor(t.x / CELL_W);
+        const tw = Math.max(1, Math.round(t.width / CELL_W));
+        const th = Math.max(1, Math.round(t.height / CELL_H));
+        for (let r = tr; r < Math.min(tr + th, totalRows); r++)
+          for (let c = tc; c < Math.min(tc + tw, CELL_COLS); c++)
+            grid[r][c] = true;
+      }
+      if (bfsReachable(grid, totalRows, CELL_COLS, targets)) break;
     }
     cachedLevels.set(key, data!);
   }
