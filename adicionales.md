@@ -67,6 +67,26 @@ Este documento registra todas las funcionalidades, decisiones técnicas y cambio
 - Botón "Ver Hitboxes" en el menú de pausa que dibuja bordes de colisión semitransparentes sobre todos los elementos.
 - Código de colores por tipo: amarillo (obstáculo), naranja (móvil), rojo (trampa), dorado (moneda), cian (power-up), verde (zona), blanco (bola).
 
+### Efectos de partículas
+- Sistema de partículas basado en refs (sin estado, sin re-renders extra).
+- Partículas al recolectar monedas (ráfaga dorada de 8 partículas).
+- Partículas al perder una vida (ráfaga roja de 12 partículas en posición de la bola).
+- Partículas al completar nivel (20 doradas + 12 blancas en el centro de la pantalla).
+- Cada partícula tiene velocidad radial aleatoria, gravedad/dirección constante, vida útil de ~25 frames, y opacidad decreciente.
+
+### Transición suave entre niveles
+- Overlay negro full-screen controlado por `Animated.Value` con `useNativeDriver`.
+- Al cargar un nuevo nivel, el overlay hace fade de opacidad 1 → 0 en 400ms.
+- La cámara se posiciona correctamente antes del fade para que la bola sea visible desde el primer frame.
+
+### Temas visuales por rango de niveles
+- El color de fondo del juego varía según el nivel para dar sensación de progresión:
+  - Niveles 1-5: azul marino oscuro (`#1a1a2e`)
+  - Niveles 6-10: púrpura oscuro (`#2d1b4e`)
+  - Niveles 11-15: rojo oscuro (`#4a1a2e`)
+  - Niveles 16-20: teal oscuro (`#1a2e2e`)
+- El HUD hereda el mismo color de fondo con transparencia (`+ 'cc'`).
+
 ---
 
 ### Verificación de alcanzabilidad (BFS)

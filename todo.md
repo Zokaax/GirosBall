@@ -37,6 +37,9 @@
 | **Trampas: pinchos y plataformas que desaparecen** | ✅ |
 | **Sistema de sprites (sprite sheet + GameSprite)** | ✅ |
 | **Modo debug de hitboxes** | ✅ |
+| **Efectos de partículas** | ✅ |
+| **Transición suave entre niveles** | ✅ |
+| **Temas visuales por rango de niveles** | ✅ |
 
 ---
 
@@ -54,9 +57,9 @@
 - [ ] **Más tipos de trampa**: Teletransporte forzado, suelo que se rompe
 
 ### Prioridad baja — Pulido visual y audio
-- [ ] **Efectos de partículas**: Al recolectar monedas, al morir, al pasar de nivel
-- [ ] **Animaciones de transición**: Entre niveles y pantallas más vistosas
-- [ ] **Temas visuales**: Variación de color/fondo por rango de niveles
+- [x] **Efectos de partículas**: Al recolectar monedas, al morir, al pasar de nivel
+- [x] **Animaciones de transición**: Fade in al cargar nivel
+- [x] **Temas visuales**: Color de fondo variable por rango de niveles
 - [ ] **Screen shake**: Animación de vibración de pantalla al chocar
 - [ ] **Bola con iluminación/brillo**: Degradado radial, sombra
 - [ ] **Efectos de sonido**: Recoger moneda, golpe, muerte, power-up, cambio de nivel

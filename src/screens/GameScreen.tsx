@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions, Vibration } from 'react-native';
+import { Animated, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions, Vibration } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
@@ -105,6 +105,28 @@ export default function GameScreen({ navigation, route }: Props) {
   const timeRef = useRef(0);
   const camYRef = useRef(0);
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const themeColors: string[] = [
+    '#1a1a2e', '#1a1a2e', '#1a1a2e', '#1a1a2e', '#1a1a2e',
+    '#2d1b4e', '#2d1b4e', '#2d1b4e', '#2d1b4e', '#2d1b4e',
+    '#4a1a2e', '#4a1a2e', '#4a1a2e', '#4a1a2e', '#4a1a2e',
+    '#1a2e2e', '#1a2e2e', '#1a2e2e', '#1a2e2e', '#1a2e2e',
+  ];
+  const bgColor = themeColors[level - 1] ?? '#1a1a2e';
+
+  type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string };
+  const particlesRef = useRef<Particle[]>([]);
+  const spawnParticles = useCallback((x: number, y: number, color: string, count: number) => {
+    const parts: Particle[] = [];
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
+      const speed = 60 + Math.random() * 100;
+      parts.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 25, maxLife: 25, color });
+    }
+    particlesRef.current = [...particlesRef.current, ...parts];
+  }, []);
+
   const levelData = useMemo(
     () => getLevel(level, screenWidth, screenHeight),
     [level, screenWidth, screenHeight],
@@ -144,12 +166,21 @@ export default function GameScreen({ navigation, route }: Props) {
     pos.current = { x: centerX, y: spawnY };
     vel.current = { x: 0, y: 0 };
     setBallPos({ x: centerX, y: spawnY });
+
+    const sc = spawnY + ballRadius;
+    const initCY = Math.max(0, Math.min(lvl.worldHeight - screenHeight, sc - screenHeight / 2));
+    camYRef.current = initCY;
+    setCamY(initCY);
+
     timeRef.current = 0;
     brokenWallsRef.current = {};
     iceStateRef.current = {};
     setBrokenWalls({});
     setIceBrokenState({});
-  }, [centerX, spawnY, screenWidth, screenHeight]);
+
+    fadeAnim.setValue(1);
+    Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start();
+  }, [centerX, spawnY, screenWidth, screenHeight, fadeAnim]);
 
   useEffect(() => {
     initLevel();
@@ -227,6 +258,10 @@ export default function GameScreen({ navigation, route }: Props) {
       if (levelTimeRef.current % 3 === 0) {
         setLevelTime(levelTimeRef.current);
       }
+
+      particlesRef.current = particlesRef.current
+        .map(p => ({ ...p, x: p.x + p.vx * 0.016, y: p.y + p.vy * 0.016, life: p.life - 1 }))
+        .filter(p => p.life > 0);
 
       timeRef.current += 1;
       const rad = ballRadius * sizeRef.current;
@@ -410,6 +445,7 @@ export default function GameScreen({ navigation, route }: Props) {
       }
 
       if (hitLethal || hitTrap) {
+        spawnParticles(newX + rad, newY + rad, '#ff4444', 12);
         pos.current = { x: newX, y: newY };
         setBallPos({ x: newX, y: newY });
         if (shieldRef.current && !hitTrap) {
@@ -434,6 +470,7 @@ export default function GameScreen({ navigation, route }: Props) {
         const c = lvl.collectibles[i];
         if (circleCircleCollision(bx, by, rad, c.x, c.y, c.radius)) {
           collectedCopy[i] = true;
+          spawnParticles(c.x, c.y, '#ffd700', 8);
           const sinceLast = timeRef.current - lastCollectFrameRef.current;
           if (sinceLast < 90 && lastCollectFrameRef.current > 0) {
             comboRef.current = Math.min(comboRef.current + 1, 10);
@@ -466,6 +503,8 @@ export default function GameScreen({ navigation, route }: Props) {
 
         const allCollected = collectedCopy.every(Boolean);
         if (allCollected) {
+          spawnParticles(screenWidth / 2, screenHeight / 2, '#ffd700', 20);
+          spawnParticles(screenWidth / 2, screenHeight / 2, '#ffffff', 12);
           pos.current = { x: newX, y: newY };
           setBallPos({ x: newX, y: newY });
           nextLevel();
@@ -599,8 +638,8 @@ export default function GameScreen({ navigation, route }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.hud}>
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      <View style={[styles.hud, { backgroundColor: bgColor + 'cc' }]}>
         <Text style={styles.hudText}>
           {'♥'.repeat(Math.max(0, lives))}
         </Text>
@@ -775,6 +814,17 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
+      {particlesRef.current.map((p, i) => (
+        <View key={`p-${i}`} style={{
+          position: 'absolute',
+          left: p.x - 3, top: p.y - 3,
+          width: 6, height: 6,
+          borderRadius: 3,
+          backgroundColor: p.color,
+          opacity: p.life / p.maxLife,
+        }} />
+      ))}
+
       <View style={{
         position: 'absolute', left: ballPos.x, top: ballPos.y,
         width: currentSize, height: currentSize,
@@ -943,6 +993,8 @@ export default function GameScreen({ navigation, route }: Props) {
           </Text>
         </View>
       )}
+
+      <Animated.View pointerEvents="none" style={[styles.fadeOverlay, { opacity: fadeAnim }]} />
 
       {!gameOver && !gameWon && (
         <TouchableOpacity
@@ -1120,6 +1172,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 50,
+  },
+  fadeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    zIndex: 100,
+    pointerEvents: 'none',
   },
   countdownText: {
     fontSize: 120,
