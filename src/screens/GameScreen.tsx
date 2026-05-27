@@ -46,7 +46,6 @@ export default function GameScreen({ navigation, route }: Props) {
   const [levelTime, setLevelTime] = useState(0);
   const [startCountdown, setStartCountdown] = useState(0);
   const [comboCount, setComboCount] = useState(0);
-  const [comboText, setComboText] = useState('');
   const [powerUpProgress, setPowerUpProgress] = useState({ shield: 0, size: 0 });
 
   const MATERIAL_MULT: Record<BallMaterial, Record<string, number>> = {
@@ -144,7 +143,6 @@ export default function GameScreen({ navigation, route }: Props) {
     comboRef.current = 0;
     lastCollectFrameRef.current = 0;
     setComboCount(0);
-    setComboText('');
 
     levelTimeRef.current = 0;
     setLevelTime(0);
@@ -375,7 +373,6 @@ export default function GameScreen({ navigation, route }: Props) {
           const mult = comboRef.current;
           newScore += 100 * mult;
           setComboCount(comboRef.current);
-          if (mult >= 2) setComboText(`x${mult}`);
         }
       }
 
@@ -434,13 +431,6 @@ export default function GameScreen({ navigation, route }: Props) {
     }, 100);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (comboText) {
-      const t = setTimeout(() => setComboText(''), 800);
-      return () => clearTimeout(t);
-    }
-  }, [comboText]);
 
   const collectedRef = useRef(collected);
   collectedRef.current = collected;
@@ -521,7 +511,6 @@ export default function GameScreen({ navigation, route }: Props) {
     comboRef.current = 0;
     lastCollectFrameRef.current = 0;
     setComboCount(0);
-    setComboText('');
     shieldRef.current = false;
     sizeRef.current = 1;
     setShieldActive(false);
@@ -545,7 +534,6 @@ export default function GameScreen({ navigation, route }: Props) {
           ⏱ {String(Math.floor(levelTime / 3600)).padStart(2, '0')}:{String(Math.floor(levelTime / 60) % 60).padStart(2, '0')}
         </Text>
         <Text style={styles.hudText}>
-          {comboCount >= 2 ? `🔥x${comboCount}` : ''}{' '}
           {ballMaterial === 'metal' ? '🔩' : ballMaterial === 'feather' ? '🪶' : '🧊'}{' '}
           {shieldActive ? '🛡 ' : ''}{sizeMultiplier !== 1 ? (sizeMultiplier > 1 ? '⬆' : '⬇') : ''}{' '}
           {activeZone ? (activeZone === 'wind' ? '💨' : activeZone === 'magnetic' ? '🧲' : activeZone === 'ice' ? '❄️' : '💩') : ''}{' '}
@@ -723,9 +711,9 @@ export default function GameScreen({ navigation, route }: Props) {
         );
       })}
 
-      {comboText !== '' && (
-        <View style={styles.comboPopup}>
-          <Text style={styles.comboPopupText}>{comboText}</Text>
+      {comboCount >= 2 && timeRef.current - lastCollectFrameRef.current < 120 && (
+        <View style={styles.comboCorner}>
+          <Text style={styles.comboCornerText}>🔥 x{comboCount}</Text>
         </View>
       )}
 
@@ -928,21 +916,19 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 2,
   },
-  comboPopup: {
+  comboCorner: {
     position: 'absolute',
-    top: '40%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    pointerEvents: 'none',
+    top: 56,
+    left: 16,
+    zIndex: 50,
   },
-  comboPopupText: {
-    fontSize: 48,
+  comboCornerText: {
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#ff6f00',
     textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   zone: {
     position: 'absolute',
