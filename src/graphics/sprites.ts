@@ -1,7 +1,7 @@
 export type SpriteKey =
   | 'ball_metal' | 'ball_plastic' | 'ball_feather'
   | 'coin'
-  | 'obstacle' | 'moving_obstacle'
+  | 'obstacle_left' | 'obstacle_right' | 'moving_obstacle'
   | 'trap_spike' | 'trap_disappearing'
   | 'powerup_shield' | 'powerup_big' | 'powerup_small'
   | 'powerup_metal' | 'powerup_plastic' | 'powerup_feather'
@@ -30,7 +30,8 @@ export const SPRITE_MAP: Record<SpriteKey, SpriteInfo> = {
   trap_spike:       { file: 'spr_3_1.png', width: 136, height: 116 },
   trap_disappearing:{ file: 'spr_3_2.png', width: 150, height: 91 },
 
-  obstacle:         { file: 'spr_4_0.png', width: 135, height: 149 },
+  obstacle_left:    { file: 'spr_4_0.png', width: 135, height: 149 },
+  obstacle_right:   { file: 'spr_4_1.png', width: 135, height: 149 },
   moving_obstacle:  { file: 'spr_4_2.png', width: 150, height: 148 },
 
   zone_wind:        { file: 'spr_5_0.png', width: 138, height: 120 },

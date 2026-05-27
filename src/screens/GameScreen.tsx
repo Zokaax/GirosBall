@@ -538,7 +538,12 @@ export default function GameScreen({ navigation, route }: Props) {
       )}
 
       {levelData.obstacles.map((obs, i) => (
-        <GameSprite key={`obs-${i}`} sprite="obstacle" width={obs.width} height={obs.height} style={{ position: 'absolute', left: obs.x, top: obs.y }} />
+        <GameSprite
+          key={`obs-${i}`}
+          sprite={i % 2 === 0 ? 'obstacle_left' : 'obstacle_right'}
+          width={obs.width} height={obs.height}
+          style={{ position: 'absolute', left: obs.x, top: obs.y }}
+        />
       ))}
 
       {levelData.movingObstacles.map((mo, i) => {
@@ -555,12 +560,14 @@ export default function GameScreen({ navigation, route }: Props) {
           const phase = Math.sin(timeRef.current * 0.03 + trap.phase * Math.PI * 2);
           if (phase < 0) return null;
         }
+        const tw = Math.max(trap.width, trap.type === 'spike' ? 40 : 60);
+        const th = Math.max(trap.height, trap.type === 'spike' ? 40 : 30);
         return (
           <GameSprite
             key={`trap-${i}`}
             sprite={trap.type === 'spike' ? 'trap_spike' : 'trap_disappearing'}
-            width={trap.width} height={trap.height}
-            style={{ position: 'absolute', left: trap.x, top: trap.y }}
+            width={tw} height={th}
+            style={{ position: 'absolute', left: trap.x - (tw - trap.width) / 2, top: trap.y - (th - trap.height) / 2 }}
           />
         );
       })}
