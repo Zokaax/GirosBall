@@ -918,7 +918,7 @@ const styles = StyleSheet.create({
   },
   comboCorner: {
     position: 'absolute',
-    top: 56,
+    top: 100,
     left: 16,
     zIndex: 50,
   },
