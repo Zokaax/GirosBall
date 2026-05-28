@@ -262,45 +262,53 @@ const cachedLevels = new Map<string, LevelData>();
 export function getLevel(levelNum: number, screenW: number, screenH: number): LevelData {
   const key = `${levelNum}-${Math.round(screenW)}-${Math.round(screenH)}`;
   if (!cachedLevels.has(key)) {
-    let data: LevelData;
-    for (let attempt = 0; attempt < 10; attempt++) {
-      data = generateLevel(levelNum, screenW, screenH, attempt);
-      const CELL_W = screenW / CELL_COLS;
-      const CELL_H = CELL_W;
-      const totalRows = 10 + levelNum * 3;
-      const targets: { r: number; c: number }[] = data.collectibles.map((c) => ({
-        r: Math.floor((c.y - TOP_OFFSET) / CELL_H),
-        c: Math.floor(c.x / CELL_W),
-      }));
-      const grid: boolean[][] = Array.from({ length: totalRows }, () => Array(CELL_COLS).fill(false));
-      for (const o of data.obstacles) {
-        const cr = Math.floor((o.y - TOP_OFFSET) / CELL_H);
-        const cc = Math.floor(o.x / CELL_W);
-        const cw = Math.max(1, Math.round(o.width / CELL_W));
-        const ch = Math.max(1, Math.round(o.height / CELL_H));
-        for (let r = cr; r < Math.min(cr + ch, totalRows); r++)
-          for (let c = cc; c < Math.min(cc + cw, CELL_COLS); c++)
-            grid[r][c] = true;
+    let data: LevelData | null = null;
+    // Try loading a Tiled-designed level first
+    try {
+      const { getTiledLevel } = require('./tiledLevels');
+      data = getTiledLevel(levelNum, screenW);
+    } catch {}
+
+    if (!data) {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        data = generateLevel(levelNum, screenW, screenH, attempt);
+        const CELL_W = screenW / CELL_COLS;
+        const CELL_H = CELL_W;
+        const totalRows = 10 + levelNum * 3;
+        const targets: { r: number; c: number }[] = data.collectibles.map((c) => ({
+          r: Math.floor((c.y - TOP_OFFSET) / CELL_H),
+          c: Math.floor(c.x / CELL_W),
+        }));
+        const grid: boolean[][] = Array.from({ length: totalRows }, () => Array(CELL_COLS).fill(false));
+        for (const o of data.obstacles) {
+          const cr = Math.floor((o.y - TOP_OFFSET) / CELL_H);
+          const cc = Math.floor(o.x / CELL_W);
+          const cw = Math.max(1, Math.round(o.width / CELL_W));
+          const ch = Math.max(1, Math.round(o.height / CELL_H));
+          for (let r = cr; r < Math.min(cr + ch, totalRows); r++)
+            for (let c = cc; c < Math.min(cc + cw, CELL_COLS); c++)
+              grid[r][c] = true;
+        }
+        for (const m of data.movingObstacles) {
+          const mr = Math.floor((m.y - TOP_OFFSET) / CELL_H);
+          const mc = Math.floor(m.x / CELL_W);
+          const mw = Math.max(1, Math.round(m.width / CELL_W));
+          const mh = Math.max(1, Math.round(m.height / CELL_H));
+          for (let r = mr; r < Math.min(mr + mh, totalRows); r++)
+            for (let c = mc; c < Math.min(mc + mw, CELL_COLS); c++)
+              grid[r][c] = true;
+        }
+        for (const t of data.traps) {
+          const tr = Math.floor((t.y - TOP_OFFSET) / CELL_H);
+          const tc = Math.floor(t.x / CELL_W);
+          const tw = Math.max(1, Math.round(t.width / CELL_W));
+          const th = Math.max(1, Math.round(t.height / CELL_H));
+          for (let r = tr; r < Math.min(tr + th, totalRows); r++)
+            for (let c = tc; c < Math.min(tc + tw, CELL_COLS); c++)
+              grid[r][c] = true;
+        }
+        if (bfsReachable(grid, totalRows, CELL_COLS, targets)) break;
       }
-      for (const m of data.movingObstacles) {
-        const mr = Math.floor((m.y - TOP_OFFSET) / CELL_H);
-        const mc = Math.floor(m.x / CELL_W);
-        const mw = Math.max(1, Math.round(m.width / CELL_W));
-        const mh = Math.max(1, Math.round(m.height / CELL_H));
-        for (let r = mr; r < Math.min(mr + mh, totalRows); r++)
-          for (let c = mc; c < Math.min(mc + mw, CELL_COLS); c++)
-            grid[r][c] = true;
-      }
-      for (const t of data.traps) {
-        const tr = Math.floor((t.y - TOP_OFFSET) / CELL_H);
-        const tc = Math.floor(t.x / CELL_W);
-        const tw = Math.max(1, Math.round(t.width / CELL_W));
-        const th = Math.max(1, Math.round(t.height / CELL_H));
-        for (let r = tr; r < Math.min(tr + th, totalRows); r++)
-          for (let c = tc; c < Math.min(tc + tw, CELL_COLS); c++)
-            grid[r][c] = true;
-      }
-      if (bfsReachable(grid, totalRows, CELL_COLS, targets)) break;
     }
     cachedLevels.set(key, data!);
   }
