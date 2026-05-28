@@ -5,7 +5,10 @@ export type SpriteKey =
   | 'trap_spike' | 'trap_disappearing'
   | 'powerup_shield' | 'powerup_big' | 'powerup_small'
   | 'powerup_metal' | 'powerup_plastic' | 'powerup_feather'
-  | 'zone_wind' | 'zone_magnetic' | 'zone_ice' | 'zone_mud';
+  | 'zone_wind' | 'zone_magnetic' | 'zone_ice' | 'zone_mud'
+  | 'rotting_floor' | 'fragile_wall' | 'wall_brick' | 'wall_tile'
+  | 'ice_whole' | 'ice_cracked' | 'ice_broken' | 'ice_floor'
+  | 'particle_sparkle' | 'particle_explosion1' | 'particle_explosion2' | 'particle_smoke';
 
 export type SpriteInfo = {
   file: string;
@@ -38,4 +41,17 @@ export const SPRITE_MAP: Record<SpriteKey, SpriteInfo> = {
   zone_magnetic:    { file: 'spr_5_2.png', width: 132, height: 117 },
   zone_ice:         { file: 'spr_5_4.png', width: 115, height: 123 },
   zone_mud:         { file: 'spr_5_6.png', width: 122, height: 122 },
+
+  rotting_floor:    { file: 'spr_6_0.png', width: 300, height: 299 },
+  fragile_wall:     { file: 'spr_6_1.png', width: 300, height: 299 },
+  wall_brick:       { file: 'spr_6_2.png', width: 300, height: 299 },
+  wall_tile:        { file: 'spr_6_3.png', width: 300, height: 299 },
+  ice_whole:        { file: 'spr_7_0.png', width: 300, height: 298 },
+  ice_cracked:      { file: 'spr_7_1.png', width: 300, height: 298 },
+  ice_broken:       { file: 'spr_7_2.png', width: 300, height: 298 },
+  ice_floor:        { file: 'spr_7_3.png', width: 300, height: 298 },
+  particle_sparkle: { file: 'spr_8_0.png', width: 300, height: 299 },
+  particle_explosion1: { file: 'spr_8_1.png', width: 300, height: 299 },
+  particle_explosion2: { file: 'spr_8_2.png', width: 300, height: 299 },
+  particle_smoke:   { file: 'spr_8_3.png', width: 300, height: 299 },
 };

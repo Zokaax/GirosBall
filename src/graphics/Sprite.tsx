@@ -26,6 +26,18 @@ const spriteAssets: Record<string, any> = {
   'spr_5_4.png': require('../../assets/sprites/spr_5_4.png'),
   'spr_5_5.png': require('../../assets/sprites/spr_5_5.png'),
   'spr_5_6.png': require('../../assets/sprites/spr_5_6.png'),
+  'spr_6_0.png': require('../../assets/sprites/spr_6_0.png'),
+  'spr_6_1.png': require('../../assets/sprites/spr_6_1.png'),
+  'spr_6_2.png': require('../../assets/sprites/spr_6_2.png'),
+  'spr_6_3.png': require('../../assets/sprites/spr_6_3.png'),
+  'spr_7_0.png': require('../../assets/sprites/spr_7_0.png'),
+  'spr_7_1.png': require('../../assets/sprites/spr_7_1.png'),
+  'spr_7_2.png': require('../../assets/sprites/spr_7_2.png'),
+  'spr_7_3.png': require('../../assets/sprites/spr_7_3.png'),
+  'spr_8_0.png': require('../../assets/sprites/spr_8_0.png'),
+  'spr_8_1.png': require('../../assets/sprites/spr_8_1.png'),
+  'spr_8_2.png': require('../../assets/sprites/spr_8_2.png'),
+  'spr_8_3.png': require('../../assets/sprites/spr_8_3.png'),
 };
 
 type Props = {

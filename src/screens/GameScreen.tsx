@@ -779,76 +779,35 @@ export default function GameScreen({ navigation, route }: Props) {
         const key = `obs-${i}`;
         if (obs.type === 'rotting_floor') {
           return (
-            <View key={key} style={{
-              position: 'absolute', left: obs.x, top: obs.y,
-              width: obs.width, height: obs.height,
-              backgroundColor: '#5d4037',
-              borderWidth: 2, borderColor: '#3e2723',
-              borderRadius: 3,
-              opacity: brokenWalls[i] ? 0.2 : 1,
-            }} />
+            <GameSprite key={key} sprite="rotting_floor" width={obs.width} height={obs.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: obs.x, top: obs.y, opacity: brokenWalls[i] ? 0.2 : 1 }}
+            />
           );
         }
         if (obs.type === 'fragile_wall') {
           return (
-            <View key={key} style={{
-              position: 'absolute', left: obs.x, top: obs.y,
-              width: obs.width, height: obs.height,
-              backgroundColor: '#a1887f',
-              borderWidth: 2, borderColor: '#795548',
-              borderRadius: 4,
-              opacity: brokenWalls[i] ? 0.2 : 1,
-              justifyContent: 'center', alignItems: 'center',
-            }}>
-              <View style={{
-                width: obs.width * 0.6, height: 1,
-                backgroundColor: '#5d4037',
-              }} />
-            </View>
+            <GameSprite key={key} sprite="fragile_wall" width={obs.width} height={obs.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: obs.x, top: obs.y, opacity: brokenWalls[i] ? 0.2 : 1 }}
+            />
           );
         }
         if (obs.type === 'thin_ice') {
           const iceBroken = iceBrokenState[i];
-          if (iceBroken === 'fallen') {
-            return (
-              <View key={key} style={{
-                position: 'absolute', left: obs.x, top: obs.y,
-                width: obs.width, height: obs.height,
-                backgroundColor: 'rgba(30,60,90,0.5)',
-                borderWidth: 1,
-                borderColor: 'rgba(30,60,90,0.8)',
-                borderRadius: 4,
-                justifyContent: 'center', alignItems: 'center',
-              }}>
-                <View style={{
-                  width: obs.width * 0.4, height: obs.height * 0.4,
-                  borderRadius: 10,
-                  backgroundColor: 'rgba(10,30,50,0.6)',
-                }} />
-      </View>
-            );
-          }
+          const iceSprite = iceBroken === 'fallen' ? 'ice_broken' : iceBroken === 'cracking' ? 'ice_cracked' : 'ice_whole';
           return (
-            <View key={key} style={{
-              position: 'absolute', left: obs.x, top: obs.y,
-              width: obs.width, height: obs.height,
-              backgroundColor: iceBroken === 'cracking' ? 'rgba(180,220,255,0.8)' : 'rgba(200,230,255,0.5)',
-              borderWidth: iceBroken === 'cracking' ? 3 : 1.5,
-              borderColor: iceBroken === 'cracking' ? '#ef5350' : '#81d4fa',
-              borderRadius: 4,
-            }} />
+            <GameSprite key={key} sprite={iceSprite} width={obs.width} height={obs.height}
+              resizeMode="stretch"
+              style={{ position: 'absolute', left: obs.x, top: obs.y }}
+            />
           );
         }
-        const halfW = obs.width / 2;
         return (
-          <Fragment key={key}>
-            <GameSprite sprite="obstacle_left" width={halfW} height={obs.height}
-              resizeMode="stretch"
-              style={{ position: 'absolute', left: obs.x, top: obs.y }} />
-            <GameSprite sprite="obstacle_right" width={halfW} height={obs.height}
-              resizeMode="stretch"
-              style={{ position: 'absolute', left: obs.x + halfW, top: obs.y }} />
-          </Fragment>
+          <GameSprite key={key} sprite="wall_brick" width={obs.width} height={obs.height}
+            resizeMode="stretch"
+            style={{ position: 'absolute', left: obs.x, top: obs.y }}
+          />
         );
       })}
 
