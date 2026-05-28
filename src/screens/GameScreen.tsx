@@ -122,14 +122,14 @@ export default function GameScreen({ navigation, route }: Props) {
   ];
   const bgColor = themeColors[level - 1] ?? '#1a1a2e';
 
-  type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; sprite: SpriteKey };
+  type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; sprite: SpriteKey; size: number };
   const particlesRef = useRef<Particle[]>([]);
-  const spawnParticles = useCallback((x: number, y: number, sprite: SpriteKey, count: number) => {
+  const spawnParticles = useCallback((x: number, y: number, sprite: SpriteKey, count: number, size = 16) => {
     const parts: Particle[] = [];
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
       const speed = 60 + Math.random() * 100;
-      parts.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 25, maxLife: 25, sprite });
+      parts.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 25, maxLife: 25, sprite, size });
     }
     particlesRef.current = [...particlesRef.current, ...parts];
   }, []);
@@ -553,7 +553,7 @@ export default function GameScreen({ navigation, route }: Props) {
           setBallPos({ x: pos.current.x, y: pos.current.y });
           dyingRef.current = 8;
         } else {
-          spawnParticles(newX + rad, newY + rad, 'particle_explosion1', 16);
+          spawnParticles(newX + rad, newY + rad, 'particle_explosion1', 16, 32);
           hideBallRef.current = true;
           dyingRef.current = 50;
         }
@@ -879,7 +879,7 @@ export default function GameScreen({ navigation, route }: Props) {
       )}
 
       {particlesRef.current.map((p, i) => {
-        const pSize = 16 * (p.life / p.maxLife);
+        const pSize = p.size * (p.life / p.maxLife);
         return (
           <GameSprite key={`p-${i}`} sprite={p.sprite} width={pSize} height={pSize}
             style={{ position: 'absolute', left: p.x - pSize / 2, top: p.y - pSize / 2, opacity: p.life / p.maxLife }}
