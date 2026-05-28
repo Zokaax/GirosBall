@@ -87,6 +87,18 @@ Este documento registra todas las funcionalidades, decisiones técnicas y cambio
 - Colores: rojo, verde, azul, amarillo, magenta, naranja.
 - Tras el segundo, se ejecuta `nextLevel()` que dispara el fade overlay negro y carga el siguiente nivel.
 
+### Efectos de sonido
+- Sonidos generados sintéticamente como WAV embebidos en base64 (sin archivos de audio externos).
+- Librería: `expo-av` con `Audio.Sound.createAsync`.
+- Moneda: tono agudo 880Hz, 80ms.
+- Muerte: tono descendente 440→220Hz, 350ms.
+- Power-up: escala ascendente 440→660→880Hz, 240ms.
+- Nivel completado: arpegio 523→659→784→1047Hz, 610ms.
+- Rebote: golpe grave 200Hz, 50ms.
+- Botón menú: clic 1000Hz, 30ms.
+- Los sonidos se generan lazy (solo la primera vez que se usan) y se descartan automáticamente tras reproducirse.
+- La inicialización de `Audio.setAudioModeAsync` ocurre automáticamente en el primer `play*()`.
+
 ### Transición suave entre niveles
 - Overlay negro full-screen controlado por `Animated.Value` con `useNativeDriver`.
 - Al cargar un nuevo nivel, el overlay hace fade de opacidad 1 → 0 en 400ms.

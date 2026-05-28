@@ -43,6 +43,7 @@
 | **Contador de monedas en HUD** | ✅ |
 | **Interpolación de tamaño power-ups** | ✅ |
 | **HUD con fondo sólido** | ✅ |
+| **Efectos de sonido (sintéticos)** | ✅ |
 
 ---
 
@@ -65,7 +66,7 @@
 - [x] **Temas visuales**: Color de fondo variable por rango de niveles
 - [ ] **Screen shake**: Animación de vibración de pantalla al chocar
 - [ ] **Bola con iluminación/brillo**: Degradado radial, sombra
-- [ ] **Efectos de sonido**: Recoger moneda, golpe, muerte, power-up, cambio de nivel
+- [x] **Efectos de sonido**: Recoger moneda, golpe, muerte, power-up, cambio de nivel
 - [ ] **Música de fondo**: Bucle musical que acelere en niveles altos
 
 ### A futuro (post-MVP)

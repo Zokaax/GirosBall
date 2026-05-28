@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Trap, type Zone } from '../data/levels';
 import GameSprite from '../graphics/Sprite';
+import { playBounceSound, playCoinSound, playDeathSound, playPowerUpSound, playLevelCompleteSound } from '../audio/sounds';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
@@ -435,6 +436,7 @@ export default function GameScreen({ navigation, route }: Props) {
         }
         newX = pos.current.x;
         newY = pos.current.y;
+        playBounceSound();
       };
 
       for (let oi = 0; oi < lvl.obstacles.length; oi++) {
@@ -515,6 +517,7 @@ export default function GameScreen({ navigation, route }: Props) {
       }
 
       if (hitLethal || hitTrap) {
+        if (!shieldRef.current || hitTrap) playDeathSound();
         if (shieldRef.current && !hitTrap) {
           vel.current.x *= -0.5;
           vel.current.y *= -0.5;
@@ -542,6 +545,7 @@ export default function GameScreen({ navigation, route }: Props) {
         if (circleCircleCollision(bx, by, rad, c.x, c.y, c.radius)) {
           collectedCopy[i] = true;
           spawnParticles(c.x, c.y, '#ffd700', 8);
+          playCoinSound();
           const sinceLast = timeRef.current - lastCollectFrameRef.current;
           if (sinceLast < 90 && lastCollectFrameRef.current > 0) {
             comboRef.current = Math.min(comboRef.current + 1, 10);
@@ -561,6 +565,7 @@ export default function GameScreen({ navigation, route }: Props) {
         if (circleCircleCollision(bx, by, rad, pu.x, pu.y, pu.radius)) {
           puCollectedCopy[i] = true;
           applyPowerUp(pu.type);
+          playPowerUpSound();
           newX = pos.current.x;
           newY = pos.current.y;
         }
@@ -574,6 +579,7 @@ export default function GameScreen({ navigation, route }: Props) {
 
         const allCollected = collectedCopy.every(Boolean);
         if (allCollected) {
+          playLevelCompleteSound();
           pos.current = { x: newX, y: newY };
           setBallPos({ x: newX, y: newY });
           levelCompleteRef.current = 60;
