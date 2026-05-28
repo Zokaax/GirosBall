@@ -101,8 +101,11 @@ let bounceUri: string | null = null;
 let buttonUri: string | null = null;
 
 export async function playCoinSound() {
-  if (!coinUri) coinUri = generateWavUri(880, 80, 0.25);
-  await playUri(coinUri, 0.5);
+  if (!coinUri) coinUri = generateMultiToneUri([
+    { freq: 1200, durationMs: 60 },
+    { freq: 1600, durationMs: 70 },
+  ], 0.2);
+  await playUri(coinUri, 0.4);
 }
 
 export async function playDeathSound() {

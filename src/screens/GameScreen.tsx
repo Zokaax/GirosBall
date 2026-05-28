@@ -98,6 +98,7 @@ export default function GameScreen({ navigation, route }: Props) {
   const sizeStartRef = useRef(0);
 
   const displaySizeRef = useRef(ballSize);
+  const lastBounceFrameRef = useRef(0);
 
   const pos = useRef({ x: centerX, y: spawnY });
   const vel = useRef({ x: 0, y: 0 });
@@ -436,7 +437,10 @@ export default function GameScreen({ navigation, route }: Props) {
         }
         newX = pos.current.x;
         newY = pos.current.y;
-        playBounceSound();
+        if (timeRef.current - lastBounceFrameRef.current > 8) {
+          playBounceSound();
+          lastBounceFrameRef.current = timeRef.current;
+        }
       };
 
       for (let oi = 0; oi < lvl.obstacles.length; oi++) {
