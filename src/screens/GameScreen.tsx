@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Trap, type Zone } from '../data/levels';
 import GameSprite from '../graphics/Sprite';
-import { playBounceSound, playCoinSound, playDeathSound, playPowerUpSound, playLevelCompleteSound } from '../audio/sounds';
+import { playCoinSound, playDeathSound, playPowerUpSound, playLevelCompleteSound } from '../audio/sounds';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
@@ -98,7 +98,6 @@ export default function GameScreen({ navigation, route }: Props) {
   const sizeStartRef = useRef(0);
 
   const displaySizeRef = useRef(ballSize);
-  const lastBounceFrameRef = useRef(0);
 
   const pos = useRef({ x: centerX, y: spawnY });
   const vel = useRef({ x: 0, y: 0 });
@@ -437,10 +436,6 @@ export default function GameScreen({ navigation, route }: Props) {
         }
         newX = pos.current.x;
         newY = pos.current.y;
-        if (timeRef.current - lastBounceFrameRef.current > 8) {
-          playBounceSound();
-          lastBounceFrameRef.current = timeRef.current;
-        }
       };
 
       for (let oi = 0; oi < lvl.obstacles.length; oi++) {

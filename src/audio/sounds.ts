@@ -93,7 +93,7 @@ async function playUri(uri: string, volume: number = 1) {
   } catch {}
 }
 
-let coinUri: string | null = null;
+let coinUris: string[] | null = null;
 let deathUri: string | null = null;
 let powerUpUri: string | null = null;
 let levelCompleteUri: string | null = null;
@@ -101,11 +101,12 @@ let bounceUri: string | null = null;
 let buttonUri: string | null = null;
 
 export async function playCoinSound() {
-  if (!coinUri) coinUri = generateMultiToneUri([
-    { freq: 1200, durationMs: 60 },
-    { freq: 1600, durationMs: 70 },
-  ], 0.2);
-  await playUri(coinUri, 0.4);
+  if (!coinUris) coinUris = [
+    generateMultiToneUri([{ freq: 1200, durationMs: 60 }, { freq: 1600, durationMs: 70 }], 0.2),
+    generateMultiToneUri([{ freq: 1400, durationMs: 55 }, { freq: 1800, durationMs: 65 }], 0.18),
+    generateMultiToneUri([{ freq: 1000, durationMs: 50 }, { freq: 1300, durationMs: 50 }, { freq: 1600, durationMs: 60 }], 0.2),
+  ];
+  await playUri(coinUris[Math.floor(Math.random() * coinUris.length)], 0.4);
 }
 
 export async function playDeathSound() {
