@@ -1041,21 +1041,54 @@ export default function GameScreen({ navigation, route }: Props) {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.buttonSecondary]}
+              onPress={handleVolverMenu}
+            >
+              <Text style={styles.buttonText}>Volver al Menú Principal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {gameWon && (
+        <View style={styles.overlay}>
+          <View style={styles.gameOverBox}>
+            <Text style={styles.gameOverTitle}>¡GANASTE!</Text>
+            <Text style={styles.gameOverScore}>Score Final: {score}</Text>
+            <TouchableOpacity style={styles.button} onPress={handleReintentar}>
+              <Text style={styles.buttonText}>Jugar de Nuevo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSecondary]}
+              onPress={handleVolverMenu}
+            >
+              <Text style={styles.buttonText}>Volver al Menú Principal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {paused && !gameOver && !gameWon && (
+        <View style={styles.overlay}>
+          <View style={styles.pauseBox}>
+            <Text style={styles.pauseTitle}>PAUSA</Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => {
+                pausedRef.current = false;
+                setPaused(false);
+                resumeMusic();
+              }}
+            >
+              <Text style={styles.buttonText}>Reanudar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSecondary]}
               onPress={() => {
                 const muted = toggleMusicMute();
                 setMusicMuted(muted);
               }}
             >
               <Text style={styles.buttonText}>{musicMuted ? '🔇 Activar Música' : '🔊 Silenciar Música'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={() => {
-                pausedRef.current = false;
-                setPaused(false);
-              }}
-            >
-              <Text style={styles.buttonText}>Reanudar</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.buttonSecondary]}
