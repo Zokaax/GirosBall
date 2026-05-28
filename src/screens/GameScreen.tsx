@@ -107,7 +107,7 @@ export default function GameScreen({ navigation, route }: Props) {
   const timeRef = useRef(0);
   const camYRef = useRef(0);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const themeColors: string[] = [
     '#1a1a2e', '#1a1a2e', '#1a1a2e', '#1a1a2e', '#1a1a2e',
@@ -195,10 +195,9 @@ export default function GameScreen({ navigation, route }: Props) {
     levelCompleteRef.current = 0;
     particlesRef.current = [];
 
-    fadeAnim.setValue(1);
     Animated.sequence([
-      Animated.delay(80),
-      Animated.timing(fadeAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
+      Animated.delay(60),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
     ]).start();
   }, [centerX, spawnY, screenWidth, screenHeight, fadeAnim]);
 
@@ -213,6 +212,7 @@ export default function GameScreen({ navigation, route }: Props) {
   }, [centerX, spawnY]);
 
   const nextLevel = useCallback(() => {
+    fadeAnim.setValue(1);
     const timeBonus = Math.max(0, Math.floor((1800 - levelTimeRef.current) / 6) * 10);
     if (timeBonus > 0) {
       scoreRef.current += timeBonus;
@@ -897,10 +897,13 @@ export default function GameScreen({ navigation, route }: Props) {
       {!hideBallRef.current && (() => {
         const blink = respawnBlinkRef.current > 0 && (Math.floor(respawnBlinkRef.current / 4) % 2 === 0);
         const dispSize = displaySizeRef.current;
-        const dispRadius = dispSize / 2;
+        const bcx = ballPos.x + currentSize / 2;
+        const bcy = ballPos.y + currentSize / 2;
+        const dl = bcx - dispSize / 2;
+        const dt = bcy - dispSize / 2;
         return (
           <View style={{
-            position: 'absolute', left: ballPos.x, top: ballPos.y,
+            position: 'absolute', left: dl, top: dt,
             width: dispSize, height: dispSize,
             alignItems: 'center', justifyContent: 'center',
             opacity: blink ? 0.25 : 1,
