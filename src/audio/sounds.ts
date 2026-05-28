@@ -145,3 +145,83 @@ export async function playButtonSound() {
   if (!buttonUri) buttonUri = generateWavUri(1000, 30, 0.15);
   await playUri(buttonUri, 0.4);
 }
+
+// Background music
+let musicSound: Audio.Sound | null = null;
+let musicVolume = 0.15;
+
+function generateMusicBpm(level: number): number {
+  return 80 + level * 3;
+}
+
+function generateMusicUri(level: number): string {
+  const bpm = generateMusicBpm(level);
+  const beatMs = 60000 / bpm;
+  const bars = 4; // 4 bars loop
+  const beatsPerBar = 4;
+  const totalBeats = bars * beatsPerBar;
+  const tones: { freq: number; durationMs: number }[] = [];
+
+  // Bass notes (root, fifth, root octave down)
+  const bassNotes = [110, 110, 165, 110]; // A2, A2, E3, A2
+  // Arpeggio pattern (pentatonic scale)
+  const arpNotes = [440, 523, 659, 784, 659, 523, 440, 392]; // A4, C5, E5, G5, E5, C5, A4, G4
+
+  for (let bar = 0; bar < bars; bar++) {
+    for (let beat = 0; beat < beatsPerBar; beat++) {
+      // Bass on beat
+      tones.push({ freq: bassNotes[beat % bassNotes.length], durationMs: beatMs * 1.5 });
+      // Arpeggio notes (two per beat)
+      const arpIdx = (bar * beatsPerBar + beat) % arpNotes.length;
+      tones.push({ freq: arpNotes[arpIdx], durationMs: beatMs * 0.4 });
+      // Silence between arpeggio hits
+      tones.push({ freq: 0, durationMs: beatMs * 0.1 });
+    }
+  }
+
+  return generateMultiToneUri(tones, 0.1);
+}
+
+let currentMusicLevel = -1;
+let musicShouldPlay = false;
+
+export function startMusic(level: number) {
+  musicShouldPlay = true;
+  updateMusic(level);
+}
+
+export function updateMusic(level: number) {
+  if (!musicShouldPlay) return;
+  currentMusicLevel = level;
+  const uri = generateMusicUri(level);
+  (async () => {
+    try {
+      if (musicSound) {
+        await musicSound.unloadAsync();
+        musicSound = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        { uri },
+        { volume: musicVolume, isLooping: true },
+      );
+      musicSound = sound;
+      await musicSound.playAsync();
+    } catch {}
+  })();
+}
+
+export async function stopMusic() {
+  musicShouldPlay = false;
+  if (musicSound) {
+    try {
+      await musicSound.stopAsync();
+      await musicSound.unloadAsync();
+    } catch {}
+    musicSound = null;
+  }
+}
+
+export function setMusicVolume(v: number) {
+  musicVolume = v;
+  if (musicSound) musicSound.setVolumeAsync(v);
+}

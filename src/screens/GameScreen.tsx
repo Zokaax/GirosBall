@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Trap, type Zone } from '../data/levels';
 import GameSprite from '../graphics/Sprite';
-import { playCoinSound, playDeathSound, playPowerUpSound, playLevelCompleteSound } from '../audio/sounds';
+import { playCoinSound, playDeathSound, playPowerUpSound, playLevelCompleteSound, updateMusic, stopMusic } from '../audio/sounds';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
@@ -109,6 +109,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const camYRef = useRef(0);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const shakeTx = useRef(new Animated.Value(0)).current;
+  const shakeTy = useRef(new Animated.Value(0)).current;
 
   const themeColors: string[] = [
     '#1a1a2e', '#1a1a2e', '#1a1a2e', '#1a1a2e', '#1a1a2e',
@@ -195,6 +197,7 @@ export default function GameScreen({ navigation, route }: Props) {
     camAnimRef.current = null;
     levelCompleteRef.current = 0;
     particlesRef.current = [];
+    updateMusic(levelRef.current);
 
     Animated.sequence([
       Animated.delay(60),
@@ -245,6 +248,7 @@ export default function GameScreen({ navigation, route }: Props) {
       return;
     }
     Vibration.vibrate(100);
+    shakeScreen(15);
     livesRef.current -= 1;
     setLives(livesRef.current);
     iceStateRef.current = {};
@@ -256,6 +260,27 @@ export default function GameScreen({ navigation, route }: Props) {
       resetBall();
     }
   }, [resetBall]);
+
+  const shakeScreen = (magnitude = 10) => {
+    const dur = 40;
+    const steps = 6;
+    const seq: Animated.CompositeAnimation[] = [];
+    let amp = magnitude;
+    for (let i = 0; i < steps; i++) {
+      const x = (Math.random() - 0.5) * 2 * amp;
+      const y = (Math.random() - 0.5) * 2 * amp;
+      seq.push(Animated.parallel([
+        Animated.timing(shakeTx, { toValue: x, duration: dur, useNativeDriver: true }),
+        Animated.timing(shakeTy, { toValue: y, duration: dur, useNativeDriver: true }),
+      ]));
+      amp *= 0.5;
+    }
+    seq.push(Animated.parallel([
+      Animated.timing(shakeTx, { toValue: 0, duration: dur, useNativeDriver: true }),
+      Animated.timing(shakeTy, { toValue: 0, duration: dur, useNativeDriver: true }),
+    ]));
+    Animated.sequence(seq).start();
+  };
 
   useEffect(() => {
     Accelerometer.setUpdateInterval(16);
@@ -353,19 +378,23 @@ export default function GameScreen({ navigation, route }: Props) {
       if (newX < 0) {
         newX = 0;
         vel.current.x *= -0.5;
+        shakeScreen(4);
       } else if (newX > screenWidth - sz) {
         newX = screenWidth - sz;
         vel.current.x *= -0.5;
+        shakeScreen(4);
       }
 
       if (newY < HUD_HEIGHT) {
         newY = HUD_HEIGHT;
         vel.current.y *= -0.5;
+        shakeScreen(4);
       }
       const worldBottom = lvl.worldHeight;
       if (newY + sz > worldBottom) {
         newY = worldBottom - sz;
         vel.current.y *= -0.5;
+        shakeScreen(4);
       }
 
       // Camera follows ball (skip if respawn animation is active)
@@ -436,6 +465,7 @@ export default function GameScreen({ navigation, route }: Props) {
         }
         newX = pos.current.x;
         newY = pos.current.y;
+        shakeScreen(6);
       };
 
       for (let oi = 0; oi < lvl.obstacles.length; oi++) {
@@ -608,6 +638,10 @@ export default function GameScreen({ navigation, route }: Props) {
   }, [screenWidth, screenHeight, die, nextLevel]);
 
   useEffect(() => {
+    return () => { stopMusic(); };
+  }, []);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       const now = performance.now();
       setPowerUpProgress({
@@ -743,6 +777,7 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
+      <Animated.View style={{ flex: 1, transform: [{ translateX: shakeTx }, { translateY: shakeTy }] }}>
       <View style={[styles.gameWorld, { width: screenWidth, height: screenHeight, transform: [{ translateY: -camY }] }]}>
         {levelData.obstacles.map((obs, i) => {
         const key = `obs-${i}`;
@@ -794,7 +829,7 @@ export default function GameScreen({ navigation, route }: Props) {
                   borderRadius: 10,
                   backgroundColor: 'rgba(10,30,50,0.6)',
                 }} />
-              </View>
+      </View>
             );
           }
           return (
@@ -999,6 +1034,7 @@ export default function GameScreen({ navigation, route }: Props) {
       )}
 
       </View>
+      </Animated.View>
 
       {gameOver && (
         <View style={styles.overlay}>
