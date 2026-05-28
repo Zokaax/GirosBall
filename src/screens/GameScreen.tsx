@@ -248,7 +248,6 @@ export default function GameScreen({ navigation, route }: Props) {
       return;
     }
     Vibration.vibrate(100);
-    shakeScreen(15);
     livesRef.current -= 1;
     setLives(livesRef.current);
     iceStateRef.current = {};
@@ -378,23 +377,19 @@ export default function GameScreen({ navigation, route }: Props) {
       if (newX < 0) {
         newX = 0;
         vel.current.x *= -0.5;
-        shakeScreen(4);
       } else if (newX > screenWidth - sz) {
         newX = screenWidth - sz;
         vel.current.x *= -0.5;
-        shakeScreen(4);
       }
 
       if (newY < HUD_HEIGHT) {
         newY = HUD_HEIGHT;
         vel.current.y *= -0.5;
-        shakeScreen(4);
       }
       const worldBottom = lvl.worldHeight;
       if (newY + sz > worldBottom) {
         newY = worldBottom - sz;
         vel.current.y *= -0.5;
-        shakeScreen(4);
       }
 
       // Camera follows ball (skip if respawn animation is active)
@@ -465,7 +460,6 @@ export default function GameScreen({ navigation, route }: Props) {
         }
         newX = pos.current.x;
         newY = pos.current.y;
-        shakeScreen(6);
       };
 
       for (let oi = 0; oi < lvl.obstacles.length; oi++) {
@@ -777,7 +771,6 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      <Animated.View style={{ flex: 1, transform: [{ translateX: shakeTx }, { translateY: shakeTy }] }}>
       <View style={[styles.gameWorld, { width: screenWidth, height: screenHeight, transform: [{ translateY: -camY }] }]}>
         {levelData.obstacles.map((obs, i) => {
         const key = `obs-${i}`;
@@ -1034,7 +1027,6 @@ export default function GameScreen({ navigation, route }: Props) {
       )}
 
       </View>
-      </Animated.View>
 
       {gameOver && (
         <View style={styles.overlay}>

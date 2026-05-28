@@ -148,7 +148,7 @@ export async function playButtonSound() {
 
 // Background music
 let musicSound: Audio.Sound | null = null;
-let musicVolume = 0.15;
+let musicVolume = 0.5;
 
 function generateMusicBpm(level: number): number {
   return 80 + level * 3;
@@ -157,7 +157,7 @@ function generateMusicBpm(level: number): number {
 function generateMusicUri(level: number): string {
   const bpm = generateMusicBpm(level);
   const beatMs = 60000 / bpm;
-  const bars = 4; // 4 bars loop
+  const bars = 2; // 2 bars loop
   const beatsPerBar = 4;
   const totalBeats = bars * beatsPerBar;
   const tones: { freq: number; durationMs: number }[] = [];
@@ -179,20 +179,10 @@ function generateMusicUri(level: number): string {
     }
   }
 
-  return generateMultiToneUri(tones, 0.1);
-}
-
-let currentMusicLevel = -1;
-let musicShouldPlay = false;
-
-export function startMusic(level: number) {
-  musicShouldPlay = true;
-  updateMusic(level);
+  return generateMultiToneUri(tones, 0.3);
 }
 
 export function updateMusic(level: number) {
-  if (!musicShouldPlay) return;
-  currentMusicLevel = level;
   const uri = generateMusicUri(level);
   (async () => {
     try {
@@ -211,7 +201,6 @@ export function updateMusic(level: number) {
 }
 
 export async function stopMusic() {
-  musicShouldPlay = false;
   if (musicSound) {
     try {
       await musicSound.stopAsync();
