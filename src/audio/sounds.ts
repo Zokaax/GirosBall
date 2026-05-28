@@ -149,37 +149,44 @@ export async function playButtonSound() {
 // Background music
 let musicSound: Audio.Sound | null = null;
 let musicVolume = 0.5;
+let musicMuted = false;
 
 function generateMusicBpm(level: number): number {
-  return 80 + level * 3;
+  return 90 + level * 3;
 }
 
 function generateMusicUri(level: number): string {
   const bpm = generateMusicBpm(level);
   const beatMs = 60000 / bpm;
-  const bars = 2; // 2 bars loop
-  const beatsPerBar = 4;
-  const totalBeats = bars * beatsPerBar;
+  const bars = 2;
   const tones: { freq: number; durationMs: number }[] = [];
 
-  // Bass notes (root, fifth, root octave down)
-  const bassNotes = [110, 110, 165, 110]; // A2, A2, E3, A2
-  // Arpeggio pattern (pentatonic scale)
-  const arpNotes = [440, 523, 659, 784, 659, 523, 440, 392]; // A4, C5, E5, G5, E5, C5, A4, G4
+  const bassNotes = [110, 110, 147, 110];
+  const arpNotes = [
+    440, 523, 659, 784, 659, 523, 440, 392,
+    440, 523, 659, 784, 659, 523, 440, 392,
+  ];
 
   for (let bar = 0; bar < bars; bar++) {
-    for (let beat = 0; beat < beatsPerBar; beat++) {
-      // Bass on beat
-      tones.push({ freq: bassNotes[beat % bassNotes.length], durationMs: beatMs * 1.5 });
-      // Arpeggio notes (two per beat)
-      const arpIdx = (bar * beatsPerBar + beat) % arpNotes.length;
-      tones.push({ freq: arpNotes[arpIdx], durationMs: beatMs * 0.4 });
-      // Silence between arpeggio hits
-      tones.push({ freq: 0, durationMs: beatMs * 0.1 });
+    for (let beat = 0; beat < 4; beat++) {
+      const bassFreq = bassNotes[(bar * 4 + beat) % bassNotes.length];
+      const isStrongBeat = beat === 0 || beat === 2;
+
+      if (isStrongBeat) {
+        tones.push({ freq: bassFreq, durationMs: beatMs * 0.25 });
+        tones.push({ freq: arpNotes[(bar * 8 + beat * 2) % arpNotes.length], durationMs: beatMs * 0.25 });
+        tones.push({ freq: arpNotes[(bar * 8 + beat * 2 + 1) % arpNotes.length], durationMs: beatMs * 0.25 });
+        tones.push({ freq: arpNotes[(bar * 8 + beat * 2 + 2) % arpNotes.length], durationMs: beatMs * 0.25 });
+      } else {
+        tones.push({ freq: arpNotes[(bar * 8 + beat * 2) % arpNotes.length], durationMs: beatMs * 0.25 });
+        tones.push({ freq: arpNotes[(bar * 8 + beat * 2 + 1) % arpNotes.length], durationMs: beatMs * 0.25 });
+        tones.push({ freq: arpNotes[(bar * 8 + beat * 2 + 2) % arpNotes.length], durationMs: beatMs * 0.25 });
+        tones.push({ freq: arpNotes[(bar * 8 + beat * 2 + 3) % arpNotes.length], durationMs: beatMs * 0.25 });
+      }
     }
   }
 
-  return generateMultiToneUri(tones, 0.3);
+  return generateMultiToneUri(tones, 0.35);
 }
 
 export function updateMusic(level: number) {
@@ -192,7 +199,7 @@ export function updateMusic(level: number) {
       }
       const { sound } = await Audio.Sound.createAsync(
         { uri },
-        { volume: musicVolume, isLooping: true },
+        { volume: musicMuted ? 0 : musicVolume, isLooping: true },
       );
       musicSound = sound;
       await musicSound.playAsync();
@@ -210,7 +217,30 @@ export async function stopMusic() {
   }
 }
 
+export async function pauseMusic() {
+  if (musicSound) {
+    try {
+      await musicSound.pauseAsync();
+    } catch {}
+  }
+}
+
+export async function resumeMusic() {
+  if (musicSound && !musicMuted) {
+    try {
+      await musicSound.playAsync();
+    } catch {}
+  }
+}
+
+export function toggleMusicMute(): boolean {
+  musicMuted = !musicMuted;
+  const vol = musicMuted ? 0 : musicVolume;
+  if (musicSound) musicSound.setVolumeAsync(vol);
+  return musicMuted;
+}
+
 export function setMusicVolume(v: number) {
   musicVolume = v;
-  if (musicSound) musicSound.setVolumeAsync(v);
+  if (musicSound && !musicMuted) musicSound.setVolumeAsync(v);
 }

@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Trap, type Zone } from '../data/levels';
 import GameSprite from '../graphics/Sprite';
-import { playCoinSound, playDeathSound, playPowerUpSound, playLevelCompleteSound, updateMusic, stopMusic } from '../audio/sounds';
+import { playCoinSound, playDeathSound, playPowerUpSound, playLevelCompleteSound, updateMusic, stopMusic, pauseMusic, resumeMusic, toggleMusicMute } from '../audio/sounds';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
 import { unlockNextLevel } from '../data/progress';
@@ -57,6 +57,7 @@ export default function GameScreen({ navigation, route }: Props) {
   const [powerUpProgress, setPowerUpProgress] = useState({ shield: 0, size: 0 });
   const [brokenWalls, setBrokenWalls] = useState<Record<number, boolean>>({});
   const [iceBrokenState, setIceBrokenState] = useState<Record<number, 'intact' | 'cracking' | 'fallen'>>({});
+  const [musicMuted, setMusicMuted] = useState(false);
 
   const MATERIAL_MULT: Record<BallMaterial, Record<string, number>> = {
     metal: { wind: 0.3, magnetic: 1.5, ice: 0.3, mud: 1.2 },
@@ -165,6 +166,7 @@ export default function GameScreen({ navigation, route }: Props) {
 
     pausedRef.current = false;
     setPaused(false);
+    resumeMusic();
 
     comboRef.current = 0;
     lastCollectFrameRef.current = 0;
@@ -722,6 +724,7 @@ export default function GameScreen({ navigation, route }: Props) {
     setPlayerName('');
     pausedRef.current = false;
     setPaused(false);
+    resumeMusic();
     comboRef.current = 0;
     lastCollectFrameRef.current = 0;
     setComboCount(0);
@@ -1038,38 +1041,15 @@ export default function GameScreen({ navigation, route }: Props) {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.buttonSecondary]}
-              onPress={handleVolverMenu}
+              onPress={() => {
+                const muted = toggleMusicMute();
+                setMusicMuted(muted);
+              }}
             >
-              <Text style={styles.buttonText}>Volver al Menú Principal</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {gameWon && (
-        <View style={styles.overlay}>
-          <View style={styles.gameOverBox}>
-            <Text style={styles.gameOverTitle}>¡GANASTE!</Text>
-            <Text style={styles.gameOverScore}>Score Final: {score}</Text>
-            <TouchableOpacity style={styles.button} onPress={handleReintentar}>
-              <Text style={styles.buttonText}>Jugar de Nuevo</Text>
+              <Text style={styles.buttonText}>{musicMuted ? '🔇 Activar Música' : '🔊 Silenciar Música'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, styles.buttonSecondary]}
-              onPress={handleVolverMenu}
-            >
-              <Text style={styles.buttonText}>Volver al Menú Principal</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {paused && !gameOver && !gameWon && (
-        <View style={styles.overlay}>
-          <View style={styles.pauseBox}>
-            <Text style={styles.pauseTitle}>PAUSA</Text>
-            <TouchableOpacity
-              style={styles.button}
               onPress={() => {
                 pausedRef.current = false;
                 setPaused(false);
@@ -1115,6 +1095,7 @@ export default function GameScreen({ navigation, route }: Props) {
           onPress={() => {
             pausedRef.current = true;
             setPaused(true);
+            pauseMusic();
           }}
         >
           <Text style={styles.pauseButtonText}>⏸</Text>
