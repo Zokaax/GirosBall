@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { getLevel, type BallMaterial, type MovingObstacle, type PowerUpType, type Trap, type Zone } from '../data/levels';
 import GameSprite from '../graphics/Sprite';
+import type { SpriteKey } from '../graphics/sprites';
 import { playCoinSound, playDeathSound, playPowerUpSound, playLevelCompleteSound, updateMusic, stopMusic, pauseMusic, resumeMusic, toggleMusicMute } from '../audio/sounds';
 import { circleCircleCollision, circleRectCollision } from '../utils/collision';
 import { loadScores, isHighScore, insertScore, saveScores } from '../data/highScores';
@@ -121,14 +122,14 @@ export default function GameScreen({ navigation, route }: Props) {
   ];
   const bgColor = themeColors[level - 1] ?? '#1a1a2e';
 
-  type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string };
+  type Particle = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; sprite: SpriteKey };
   const particlesRef = useRef<Particle[]>([]);
-  const spawnParticles = useCallback((x: number, y: number, color: string, count: number) => {
+  const spawnParticles = useCallback((x: number, y: number, sprite: SpriteKey, count: number) => {
     const parts: Particle[] = [];
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
       const speed = 60 + Math.random() * 100;
-      parts.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 25, maxLife: 25, color });
+      parts.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 25, maxLife: 25, sprite });
     }
     particlesRef.current = [...particlesRef.current, ...parts];
   }, []);
@@ -138,7 +139,6 @@ export default function GameScreen({ navigation, route }: Props) {
   const respawnBlinkRef = useRef(0);
   const camAnimRef = useRef<{ from: number; to: number; progress: number; duration: number } | null>(null);
   const levelCompleteRef = useRef(0);
-  const fireworkColors = ['#ff4444', '#44ff44', '#44aaff', '#ffff44', '#ff44ff', '#ff8844'];
 
   const levelData = useMemo(
     () => getLevel(level, screenWidth, screenHeight),
@@ -331,8 +331,8 @@ export default function GameScreen({ navigation, route }: Props) {
         if (levelCompleteRef.current % 8 === 0) {
           const fx = Math.random() * screenWidth;
           const fy = camYRef.current + Math.random() * screenHeight * 0.5;
-          const c = fireworkColors[Math.floor(Math.random() * fireworkColors.length)];
-          spawnParticles(fx, fy, c, 18);
+          const sprite = Math.random() > 0.5 ? 'particle_explosion2' : 'particle_sparkle';
+          spawnParticles(fx, fy, sprite, 18);
         }
         if (levelCompleteRef.current === 0) {
           nextLevel();
@@ -553,7 +553,7 @@ export default function GameScreen({ navigation, route }: Props) {
           setBallPos({ x: pos.current.x, y: pos.current.y });
           dyingRef.current = 8;
         } else {
-          spawnParticles(newX + rad, newY + rad, '#ff4444', 16);
+          spawnParticles(newX + rad, newY + rad, 'particle_explosion1', 16);
           hideBallRef.current = true;
           dyingRef.current = 50;
         }
@@ -569,7 +569,7 @@ export default function GameScreen({ navigation, route }: Props) {
         const c = lvl.collectibles[i];
         if (circleCircleCollision(bx, by, rad, c.x, c.y, c.radius)) {
           collectedCopy[i] = true;
-          spawnParticles(c.x, c.y, '#ffd700', 8);
+          spawnParticles(c.x, c.y, 'particle_sparkle', 8);
           playCoinSound();
           const sinceLast = timeRef.current - lastCollectFrameRef.current;
           if (sinceLast < 90 && lastCollectFrameRef.current > 0) {
@@ -608,8 +608,8 @@ export default function GameScreen({ navigation, route }: Props) {
           pos.current = { x: newX, y: newY };
           setBallPos({ x: newX, y: newY });
           levelCompleteRef.current = 60;
-          spawnParticles(screenWidth / 2, screenHeight / 2, '#ffd700', 25);
-          spawnParticles(screenWidth / 2, screenHeight / 2, '#ffffff', 15);
+          spawnParticles(screenWidth / 2, screenHeight / 2, 'particle_explosion2', 25);
+          spawnParticles(screenWidth / 2, screenHeight / 2, 'particle_sparkle', 15);
           return;
       }
       }
@@ -878,16 +878,14 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      {particlesRef.current.map((p, i) => (
-        <View key={`p-${i}`} style={{
-          position: 'absolute',
-          left: p.x - 3, top: p.y - 3,
-          width: 6, height: 6,
-          borderRadius: 3,
-          backgroundColor: p.color,
-          opacity: p.life / p.maxLife,
-        }} />
-      ))}
+      {particlesRef.current.map((p, i) => {
+        const pSize = 16 * (p.life / p.maxLife);
+        return (
+          <GameSprite key={`p-${i}`} sprite={p.sprite} width={pSize} height={pSize}
+            style={{ position: 'absolute', left: p.x - pSize / 2, top: p.y - pSize / 2, opacity: p.life / p.maxLife }}
+          />
+        );
+      })}
 
       {!hideBallRef.current && (() => {
         const blink = respawnBlinkRef.current > 0 && (Math.floor(respawnBlinkRef.current / 4) % 2 === 0);
